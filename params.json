@@ -1,0 +1,9 @@
+{
+    "learning_rate": 1e-3,
+    "batch_size": 8,
+    "num_epochs": 200,
+    "use_augm": true,
+    "patch_size": 128, 
+    "samp_per_epoch": 3000,
+    "ovrl":0.5
+}
