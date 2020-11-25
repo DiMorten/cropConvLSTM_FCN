@@ -66,25 +66,25 @@ def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
     
     
     # Regression branch
-    up61 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
-    merge61 = concatenate([drop3,up61], axis = 3)
-    conv61 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge61)
-    conv61 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv61)
+#    up61 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
+#    merge61 = concatenate([drop3,up61], axis = 3)
+#    conv61 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge61)
+#    conv61 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv61)
 
-    up71 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv61))
-    merge71 = concatenate([conv2,up71], axis = 3)
-    conv71 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge71)
-    conv71 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv71)
+#    up71 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv61))
+#    merge71 = concatenate([conv2,up71], axis = 3)
+#    conv71 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge71)
+#    conv71 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv71)
 
-    up81 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv71))
-    merge81 = concatenate([conv1,up81], axis = 3)
-    conv81 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge81)
-    conv81 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv81)
-    regresor = Conv2D(1, 1, activation = 'sigmoid', name='reg_output')(conv81)
+#    up81 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv71))
+#    merge81 = concatenate([conv1,up81], axis = 3)
+#    conv81 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge81)
+#    conv81 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv81)
+#    regresor = Conv2D(1, 1, activation = 'sigmoid', name='reg_output')(conv81)
 
 
-    model = Model(input = inputs, output = [classfier,regresor])
-
+    model = Model(input = inputs, output = [classfier])
+    print(model.summary())
     return model
 
 def f1_mean(y_true, y_pred):

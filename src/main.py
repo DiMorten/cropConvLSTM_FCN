@@ -34,61 +34,78 @@ from sklearn import preprocessing as pp
 import joblib
 import pandas as pd
 import seaborn as sns
-from deeplabv3 import Deeplabv3
-from deeplab_versions import DeepLabVersions
+#from deeplabv3 import Deeplabv3
+#from deeplab_versions import DeepLabVersions
 import tensorflow as tf
-
-
+import pdb
+from dataSource import CampoVerdeSAR
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_dir', default='./experiments/v5',
+parser.add_argument('--model_dir', default='../results',
                     help="Experiment directory containing params.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, directory or file containing weights to reload before training")
-parser.add_argument('--img_data', default='/home/laura/Projects/Trabalho-Camile/Data/orthoimages/ortoA1_25tiff.tif', 
+parser.add_argument('--img_data', default='../data/cv/sar/stack.npy', 
                     help="Path of the train RGB image")
-parser.add_argument('--gt_tr', default='/home/laura/Projects/Trabalho-Camile/Data/samples_A1_train2tif.tif', 
+parser.add_argument('--gt_tr', default='../data/cv/labels/20151029.tif', 
                     help="Path of the refrence train image")
-parser.add_argument('--gt_val', default='new_dev.tif', 
-                    help="Path of the refrence train image")
-parser.add_argument('--gt_test', default='/home/laura/Projects/Trabalho-Camile/Data/samples_A1_test2tif.tif', 
-                    help="Path of the refrence train image")
-parser.add_argument('--depth', default='/home/laura/Projects/Trabalho-Camile/FCN_MTL_v2/data/imgTrain_depth.tif', 
+parser.add_argument('--train_test_mask', default='../data/cv/TrainTestMask.tif', 
+                    help="Path of the refrence train image")                    
+#parser.add_argument('--gt_val', default='new_dev.tif', 
+#                    help="Path of the refrence train image")
+#parser.add_argument('--gt_test', default='/home/laura/Projects/Trabalho-Camile/Data/samples_A1_test2tif.tif', 
+#                    help="Path of the refrence train image")
+#parser.add_argument('--depth', default='/home/laura/Projects/Trabalho-Camile/FCN_MTL_v2/data/imgTrain_depth.tif', 
 # parser.add_argument('--depth', default='/home/laura/Projects/Trabalho-Camile/Data/train_edt.tif',
-                    help="Path of the refrence train image")
-parser.add_argument('--mask', default='/home/laura/Projects/Trabalho-Camile/Laura_mask_files/mask.tif', 
-                    help="Path of the refrence train image")
+#                    help="Path of the refrence train image")
+#parser.add_argument('--mask', default='/home/laura/Projects/Trabalho-Camile/Laura_mask_files/mask.tif', 
+#                    help="Path of the refrence train image")
 parser.add_argument('--mode', default="Train", 
                     help="If True use a dev set, if False, use training set to monitor the metrics")
 
 if __name__ == '__main__':
+
+    # define dataset
+#    ds = CampoVerdeSAR()
+#    image = ds.loadIms()
+
     # Load the parameters from json file
     args = parser.parse_args()
-    json_path = os.path.join(args.model_dir, 'params.json')
+#    json_path = os.path.join(args.model_dir, 'params.json')
+    json_path = 'params.json'
     assert os.path.isfile(
         json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
            
     # load train image
-    image = load_image(args.img_data)
-    image = np.rollaxis(image,0,3)
+    image = np.load(args.img_data)
+    print(image.shape)
+    #image = np.rollaxis(image,0,3)
     row,col,bands = image.shape
     params.channels = bands
 
     # load label image for train
+    labels = load_image(args.gt_tr)
+    mask = load_image(args.train_test_mask)
+
+
+    # load label image for dev
+    labels_dev = labels.copy()
+    labels_dev[labels_dev!=3]=0
+    labels_dev = labels_dev.astype('uint8')
+
+
     if args.mode == "Train":
-        labels = load_image(args.gt_tr)
+        labels[mask!=1]=0
     else:
-        labels = load_image(args.gt_test)
+        labels[mask!=2]=0
+#        labels = load_image(args.gt_test)
         
     labels = labels.astype('uint8')
     
-    # load label image for dev
-    labels_dev = load_image(args.gt_val)
-    labels_dev = labels_dev.astype('uint8')
     
     # load depth image
-    depth = load_image(args.depth)
+#    depth = load_image(args.depth)
     
     # Start training or evaluation
     for i in range(1):
@@ -120,33 +137,36 @@ if __name__ == '__main__':
             image_tr, stride, step_row, step_col, overlap = add_padding(image, params.patch_size, params.ovrl)
         
             labels_tr, _, _, _, _ = add_padding(labels, params.patch_size, params.ovrl)
-            labels_val, _, _, _, _ = add_padding(labels_dev, params.patch_size, params.ovrl)
+##            labels_val, _, _, _, _ = add_padding(labels_dev, params.patch_size, params.ovrl)
         
             # get coords
             coords_tr = extract_patches_coord(labels_tr, params.patch_size, stride, train = True)
-            coords_val = extract_patches_coord(labels_val, params.patch_size, stride, train = False)
+##            coords_val = extract_patches_coord(labels_val, params.patch_size, stride, train = False)
             
             coords_tr = np.rollaxis(coords_tr,1,0)
-            coords_val = np.rollaxis(coords_val,1,0)
+            print(coords_tr.shape)
+##            pdb.set_trace()
+##            coords_val = np.rollaxis(coords_val,1,0)
               
-            depth_tr, _, _, _, _ = add_padding(depth, params.patch_size, params.ovrl)
+            #depth_tr, _, _, _, _ = add_padding(depth, params.patch_size, params.ovrl)
         
-            depth_tr = (depth_tr-np.min(depth_tr))/(np.max(depth_tr)-np.min(depth_tr))
+            #depth_tr = (depth_tr-np.min(depth_tr))/(np.max(depth_tr)-np.min(depth_tr))
             
             # convert original classes to ordered classes
             classes = np.unique(labels_tr)
+
             labels_tr = labels_tr-1
-            labels_val = labels_val-1
+##            labels_val = labels_val-1
             params.classes = len(classes)-1
             labels_tr[labels_tr==255] = params.classes
-            labels_val[labels_val==255] = params.classes
+##            labels_val[labels_val==255] = params.classes
             tmp_tr = labels_tr.copy()
-            tmp_val = labels_val.copy()
+##            tmp_val = labels_val.copy()
             labels2new_labels = dict((c, i) for i, c in enumerate(classes))
             new_labels2labels = dict((i, c) for i, c in enumerate(classes))
             for j in range(len(classes)):
                 labels_tr[tmp_tr == classes[j]] = labels2new_labels[classes[j]]
-                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
+##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
             
         if args.mode == "Train":       
             # Set the logger
@@ -169,20 +189,21 @@ if __name__ == '__main__':
             index_tr = np.random.choice(len(coords_tr[0]), len(coords_tr[0]), replace=False)
             
             # index validation
-            index_val = np.array(range(len(coords_val[0])))
+##            index_val = np.array(range(len(coords_val[0])))
 
             # Define generators
             dim = (params.patch_size, params.patch_size, params.channels)
 
-            training_generator = DataGenerator(image_tr, labels_tr, depth_tr, coords_tr, index_tr, params.channels, 
+            training_generator = DataGenerator(image_tr, labels_tr, coords_tr, index_tr, params.channels, 
                                                params.patch_size, params.batch_size, dim,  
-                                               samp_per_epoch= params.samp_per_epoch, shuffle=True, 
+                                               samp_per_epoch= 1965, shuffle=True, 
                                                use_augm = params.use_augm)
+##samp_per_epoch= params.samp_per_epoch
 
-            validation_generator = DataGenerator(image_tr, labels_val, depth_tr, coords_val, index_val, params.channels, 
-                                                 params.patch_size, params.batch_size, dim,  shuffle=True)
+##            validation_generator = DataGenerator(image_tr, labels_val, coords_val, index_val, params.channels, 
+##                                                 params.patch_size, params.batch_size, dim,  shuffle=True)
             
-            # validation_generator = DataGenerator(image_tr, labels_val, depth_tr, coords_val, index_val, params.channels, 
+            # validation_generator = DataGenerator(image_tr, labels_val, coords_val, index_val, params.channels, 
             #                                      params.patch_size, params.batch_size, dim,
             #                                      samp_per_epoch = params.samp_epoch_val, shuffle=True, 
             #                                      use_augm = params.use_augm)
@@ -196,17 +217,15 @@ if __name__ == '__main__':
             else:
                 model = DeepLabVersions(dim, params)
                         
-            plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)
+            ##plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)
             
             cl_ind = [x for x in range(params.classes)]
-            losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind), 
-                      "reg_output": masked_mse()}
+            losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind)}
             # losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind), 
             #           "reg_output": masked_mse()}
-            lossWeights = {"cl_output": 1.0, "reg_output": 1.0}
+            lossWeights = {"cl_output": 1.0}
             
-            custom_metrics = {"cl_output": accuracy_mask(), 
-                              "reg_output": masked_mse()}
+            custom_metrics = {"cl_output": accuracy_mask()}
             
             # Compile model
             # model.compile(loss=crossentropy_mask, 
@@ -216,9 +235,10 @@ if __name__ == '__main__':
             
             # Train model on dataset
             history = model.fit_generator(generator=training_generator,
-                                validation_data=validation_generator,
+##                                validation_data=validation_generator,
                                 epochs = params.num_epochs,
-                                callbacks = [Monitor(validation=validation_generator,patience = 15,
+                                #steps_per_epoch = params.samp_per_epoch,
+                                callbacks = [Monitor(validation=training_generator,patience = 15,
                                                     model_dir=model_k, classes=params.classes)]) 
             model.save(file_output)
             
@@ -245,33 +265,33 @@ if __name__ == '__main__':
                 cl_ind = [x for x in range(params.classes)]
                 file_model = os.path.join(model_k,'bestmodel_{}.hdf5'.format(i))
                 model = load_model(file_model, custom_objects={"f_cat": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind),
-                                                              "f_reg": masked_mse(),
+                                                              #"f_reg": masked_mse(),
                                                               "f_acc": accuracy_mask(),
                                                               "tf": tf})
              
                 row,col,bands = image_tr.shape
                 cl_img = np.zeros((row,col,params.classes))
                 cl_img = cl_img.astype('float16')
-                reg_img = np.zeros((row,col))
-                reg_img = reg_img.astype('float16')
+                #reg_img = np.zeros((row,col))
+                #reg_img = reg_img.astype('float16')
                 
                 for m in range(params.patch_size//2,row-params.patch_size//2,stride): 
                     for n in range(params.patch_size//2,col-params.patch_size//2,stride):
                         patch = image_tr[m-params.patch_size//2:m+params.patch_size//2 + params.patch_size%2,
                                   n-params.patch_size//2:n+params.patch_size//2 + params.patch_size%2]
                         patch = patch.reshape((1,params.patch_size,params.patch_size,bands))
-                        pred_cl, pred_reg = model.predict(patch)
+                        pred_cl = model.predict(patch)
                         _, x, y, c = pred_cl.shape
                           
                         cl_img[m-stride//2:m+stride//2,n-stride//2:n+stride//2,:] = pred_cl[0,overlap//2:x-overlap//2,overlap//2:y-overlap//2,:]
-                        reg_img[m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_reg[0,overlap//2:x-overlap//2,overlap//2:y-overlap//2,0]
+                        #reg_img[m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_reg[0,overlap//2:x-overlap//2,overlap//2:y-overlap//2,0]
             
             
                 cl_img = cl_img[overlap//2:-step_row,overlap//2:-step_col,:]
-                reg_img = reg_img[overlap//2:-step_row,overlap//2:-step_col]
+                #reg_img = reg_img[overlap//2:-step_row,overlap//2:-step_col]
                 
                 np.save(os.path.join(model_k, 'pred_prob_{}_{}'.format(params.patch_size, params.ovrl)), cl_img)
-                np.save(os.path.join(model_k, 'pred_depth_{}_{}'.format(params.patch_size, params.ovrl)), reg_img)
+                #np.save(os.path.join(model_k, 'pred_depth_{}_{}'.format(params.patch_size, params.ovrl)), reg_img)
         
                 gc.collect()
                 del model

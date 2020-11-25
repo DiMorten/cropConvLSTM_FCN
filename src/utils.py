@@ -248,6 +248,48 @@ def add_padding(img, psize, overl):
 
     return pad_img, stride, step_row, step_col, overlap
 
+def seq_add_padding(img, psize, overl):
+    '''Function to padding image
+        input:
+            patches_size: psize
+            stride: stride
+            img: image (row,col,bands)
+    '''    
+
+    try:
+        t_len, row, col, bands = img.shape
+    except:
+        bands = 0
+        t_len, row, col = img.shape
+        
+    # Percent of overlap between consecutive patches.
+    # The overlap will be multiple of 2
+    overlap = int(round(psize * overl))
+    overlap -= overlap % 2
+    stride = psize - overlap
+
+    # Add Padding to the image to match with the patch size and the overlap
+    row += overlap//2
+    col += overlap//2
+    step_row = (stride - row % stride) % stride
+    step_col = (stride - col % stride) % stride
+    
+    if bands>0:
+        npad_img = ((overlap//2, step_row), (overlap//2, step_col),(0,0))
+    else:        
+        npad_img = ((overlap//2, step_row), (overlap//2, step_col))  
+    
+    pad_img = np.zeros((t_len,row, col, bands))
+    # padd with symetric (espelhado)    
+    for t_step in t_len:
+        pad_img[t_step] = np.pad(img[t_step], npad_img, mode='symmetric')
+
+    # Number of patches: k1xk2
+    k1, k2 = (row+step_row)//stride, (col+step_col)//stride
+    print('Number of patches: %d' %(k1 * k2))
+
+    return pad_img, stride, step_row, step_col, overlap
+
 
 def balance_coords(img_gt, class_list, samples_per_class, random = True):
     '''Function to balance coords for data augmentation

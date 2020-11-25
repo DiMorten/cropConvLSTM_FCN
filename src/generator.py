@@ -13,10 +13,10 @@ from tensorflow.python.keras.utils.data_utils import Sequence
 
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 
-class DataGenerator(Sequence):
+class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
 
-    def __init__(self, data, labels, depth, coords, idx_coord, channels = 25, 
+    def __init__(self, data, labels, coords, idx_coord, channels = 25, 
                  patch_size = 15, batch_size=32, dim=(15,15,14), 
                  samp_per_epoch = None, shuffle=False, 
                  use_augm=False):
@@ -44,7 +44,7 @@ class DataGenerator(Sequence):
 
         self.data = data
         self.label = labels
-        self.depth = depth
+        #self.depth = depth
         self.dim = dim
         self.batch_size = batch_size
         self.list_coords = idx_coord
@@ -74,9 +74,9 @@ class DataGenerator(Sequence):
         idx_tmp = [self.list_coords[k] for k in indexes]
 
         # Generate data
-        X, Y, D = self.__data_generation(idx_tmp)
+        X, Y = self.__data_generation(idx_tmp)
 
-        return X, [Y, D] 
+        return X, [Y] 
 
     def on_epoch_end(self):
         'Updates indexes and list coords after each epoch'
@@ -98,7 +98,7 @@ class DataGenerator(Sequence):
 
         X = np.empty((self.batch_size, *self.dim))
         Y = np.empty((self.batch_size, self.patch_size,self.patch_size), dtype=np.uint8)
-        D = np.empty((self.batch_size, self.patch_size,self.patch_size,1), dtype=np.float32)
+        #D = np.empty((self.batch_size, self.patch_size,self.patch_size,1), dtype=np.float32)
 
         # Generate data
         for i in range(len(idx_tmp)):
@@ -110,8 +110,8 @@ class DataGenerator(Sequence):
             lab_tmp = self.label[self.coords[0][idx_tmp[i]]-self.patch_size//2:self.coords[0][idx_tmp[i]]+self.patch_size//2+self.patch_size%2,
                           self.coords[1][idx_tmp[i]]-self.patch_size//2:self.coords[1][idx_tmp[i]]+self.patch_size//2+self.patch_size%2]
 
-            depth_tmp = self.depth[self.coords[0][idx_tmp[i]]-self.patch_size//2:self.coords[0][idx_tmp[i]]+self.patch_size//2+self.patch_size%2,
-                          self.coords[1][idx_tmp[i]]-self.patch_size//2:self.coords[1][idx_tmp[i]]+self.patch_size//2+self.patch_size%2]
+            #depth_tmp = self.depth[self.coords[0][idx_tmp[i]]-self.patch_size//2:self.coords[0][idx_tmp[i]]+self.patch_size//2+self.patch_size%2,
+            #              self.coords[1][idx_tmp[i]]-self.patch_size//2:self.coords[1][idx_tmp[i]]+self.patch_size//2+self.patch_size%2]
 
             idx_tmp = np.array(idx_tmp)
             # Random flips and rotations 
@@ -121,36 +121,36 @@ class DataGenerator(Sequence):
                     # rot 90
                     patch_tmp = np.rot90(patch_tmp,1,(0,1))
                     lab_tmp = np.rot90(lab_tmp,1,(0,1))
-                    depth_tmp = np.rot90(depth_tmp,1,(0,1))
+                    #depth_tmp = np.rot90(depth_tmp,1,(0,1))
                     
                 elif transf == 1:
                     # rot 180
                     patch_tmp = np.rot90(patch_tmp,2,(0,1))
                     lab_tmp = np.rot90(lab_tmp,2,(0,1))
-                    depth_tmp = np.rot90(depth_tmp,2,(0,1))
+                    #depth_tmp = np.rot90(depth_tmp,2,(0,1))
                   
                 elif transf == 2:
                     # flip horizontal
                     patch_tmp = np.flip(patch_tmp,0)
                     lab_tmp = np.flip(lab_tmp,0)
-                    depth_tmp = np.flip(depth_tmp,0)
+                    #depth_tmp = np.flip(depth_tmp,0)
                     
                   
                 elif transf == 3:
                     # flip vertical
                     patch_tmp = np.flip(patch_tmp,1)
                     lab_tmp = np.flip(lab_tmp,1)
-                    depth_tmp = np.flip(depth_tmp,1)
+                    #depth_tmp = np.flip(depth_tmp,1)
                   
                 elif transf == 4:
                     # rot 270
                     patch_tmp = np.rot90(patch_tmp,3,(0,1))
                     lab_tmp = np.rot90(lab_tmp,3,(0,1))
-                    depth_tmp = np.rot90(depth_tmp,3,(0,1))
+                    #depth_tmp = np.rot90(depth_tmp,3,(0,1))
                  
                 
             X[i,] = patch_tmp
             Y[i,] = lab_tmp
-            D[i,:,:,0] = depth_tmp
+            #D[i,:,:,0] = depth_tmp
 
-        return X, Y, D
+        return X, Y#, D
