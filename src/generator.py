@@ -152,5 +152,5 @@ class DataGenerator(keras.utils.Sequence):
             X[i,] = patch_tmp
             Y[i,] = lab_tmp
             #D[i,:,:,0] = depth_tmp
-        deb.prints(Y.shape)
+        #deb.prints(Y.shape)
         return X, np.expand_dims(Y,axis=-1)#, D
