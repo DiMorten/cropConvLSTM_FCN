@@ -10,7 +10,7 @@ import numpy as np
 import keras
 from collections import Counter
 from tensorflow.python.keras.utils.data_utils import Sequence
-
+import deb
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 
 class DataGenerator(keras.utils.Sequence):
@@ -152,5 +152,5 @@ class DataGenerator(keras.utils.Sequence):
             X[i,] = patch_tmp
             Y[i,] = lab_tmp
             #D[i,:,:,0] = depth_tmp
-
-        return X, Y#, D
+        deb.prints(Y.shape)
+        return X, np.expand_dims(Y,axis=-1)#, D

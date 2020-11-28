@@ -38,16 +38,39 @@ import seaborn as sns
 #from deeplab_versions import DeepLabVersions
 import tensorflow as tf
 import pdb
+from pathlib import Path
+import colorama
 from dataSource import CampoVerdeSAR
+import deb
+
+colorama.init()
+
+def im_load(path):
+    im_names=['20160309_S1','20160321_S1','20160508_S1','20160520_S1','20160613_S1','20160707_S1','20160731_S1']
+    out=[]
+    for im_name in im_names:
+        im=np.load(path/(im_name+'.npy')).astype(np.float16)
+        out.append(im)
+    out=np.asarray(out).astype(np.float16)
+    print(out.shape)
+    t_len, row, col, bands = out.shape
+    out=np.moveaxis(out,0,-1)
+    out=np.reshape(out,(row,col,bands*t_len))
+    print(out.shape)
+    
+    return out
+#    pdb.set_trace()
+    # transpose, concatenate with bands
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_dir', default='../results',
                     help="Experiment directory containing params.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, directory or file containing weights to reload before training")
-parser.add_argument('--img_data', default='../data/cv/sar/stack.npy', 
+parser.add_argument('--img_data', default='../data/cv/sar/', 
                     help="Path of the train RGB image")
-parser.add_argument('--gt_tr', default='../data/cv/labels/20151029.tif', 
+parser.add_argument('--gt_tr', default='../data/cv/labels/20160731_S1.tif', 
                     help="Path of the refrence train image")
 parser.add_argument('--train_test_mask', default='../data/cv/TrainTestMask.tif', 
                     help="Path of the refrence train image")                    
@@ -58,19 +81,23 @@ parser.add_argument('--train_test_mask', default='../data/cv/TrainTestMask.tif',
 #parser.add_argument('--depth', default='/home/laura/Projects/Trabalho-Camile/FCN_MTL_v2/data/imgTrain_depth.tif', 
 # parser.add_argument('--depth', default='/home/laura/Projects/Trabalho-Camile/Data/train_edt.tif',
 #                    help="Path of the refrence train image")
-#parser.add_argument('--mask', default='/home/laura/Projects/Trabalho-Camile/Laura_mask_files/mask.tif', 
-#                    help="Path of the refrence train image")
+parser.add_argument('--mask', default='../data/cv/TrainTestMask.tif', 
+                    help="Path of the refrence train image")
 parser.add_argument('--mode', default="Train", 
                     help="If True use a dev set, if False, use training set to monitor the metrics")
 
 if __name__ == '__main__':
 
+    val_mode = False
     # define dataset
 #    ds = CampoVerdeSAR()
 #    image = ds.loadIms()
 
     # Load the parameters from json file
     args = parser.parse_args()
+
+    
+    args.img_data=Path(args.img_data)
 #    json_path = os.path.join(args.model_dir, 'params.json')
     json_path = 'params.json'
     assert os.path.isfile(
@@ -78,7 +105,8 @@ if __name__ == '__main__':
     params = Params(json_path)
            
     # load train image
-    image = np.load(args.img_data)
+    #image = np.load(args.img_data)
+    image = im_load(args.img_data)
     print(image.shape)
     #image = np.rollaxis(image,0,3)
     row,col,bands = image.shape
@@ -89,10 +117,11 @@ if __name__ == '__main__':
     mask = load_image(args.train_test_mask)
 
 
-    # load label image for dev
-    labels_dev = labels.copy()
-    labels_dev[labels_dev!=3]=0
-    labels_dev = labels_dev.astype('uint8')
+    if val_mode==True:
+        # load label image for dev
+        labels_dev = labels.copy()
+        labels_dev[labels_dev!=3]=0
+        labels_dev = labels_dev.astype('uint8')
 
 
     if args.mode == "Train":
@@ -102,6 +131,8 @@ if __name__ == '__main__':
 #        labels = load_image(args.gt_test)
         
     labels = labels.astype('uint8')
+    deb.prints(labels.shape)
+    deb.prints(np.unique(labels,return_counts=True))
     
     
     # load depth image
@@ -154,20 +185,27 @@ if __name__ == '__main__':
             
             # convert original classes to ordered classes
             classes = np.unique(labels_tr)
-
+            deb.prints(classes)
             labels_tr = labels_tr-1
 ##            labels_val = labels_val-1
             params.classes = len(classes)-1
             labels_tr[labels_tr==255] = params.classes
+            classes = np.unique(labels_tr)
+            deb.prints(classes)
+
 ##            labels_val[labels_val==255] = params.classes
             tmp_tr = labels_tr.copy()
 ##            tmp_val = labels_val.copy()
+
+            deb.prints(labels_tr.shape)
+            deb.prints(np.unique(labels_tr,return_counts=True))  
             labels2new_labels = dict((c, i) for i, c in enumerate(classes))
             new_labels2labels = dict((i, c) for i, c in enumerate(classes))
             for j in range(len(classes)):
                 labels_tr[tmp_tr == classes[j]] = labels2new_labels[classes[j]]
 ##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
-            
+            deb.prints(labels_tr.shape)
+            deb.prints(np.unique(labels_tr,return_counts=True))            
         if args.mode == "Train":       
             # Set the logger
             count_cl = dict(sorted(Counter(labels_tr[labels_tr!=params.classes]).items()))
@@ -231,15 +269,15 @@ if __name__ == '__main__':
             # model.compile(loss=crossentropy_mask, 
             #               metrics=["accuracy", f1_mean], optimizer=optimizer)
             model.compile(optimizer=optimizer, loss=losses, loss_weights=lossWeights,
-                          metrics=custom_metrics)
+                          metrics=['accuracy']) #custom_metrics
             
             # Train model on dataset
             history = model.fit_generator(generator=training_generator,
 ##                                validation_data=validation_generator,
-                                epochs = params.num_epochs,
+                                epochs = params.num_epochs)
                                 #steps_per_epoch = params.samp_per_epoch,
-                                callbacks = [Monitor(validation=training_generator,patience = 15,
-                                                    model_dir=model_k, classes=params.classes)]) 
+##                                callbacks = [Monitor(validation=training_generator,patience = 15,
+##                                                    model_dir=model_k, classes=params.classes)]) 
             model.save(file_output)
             
             # save training history        
