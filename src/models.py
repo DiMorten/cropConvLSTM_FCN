@@ -83,7 +83,7 @@ def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
 #    regresor = Conv2D(1, 1, activation = 'sigmoid', name='reg_output')(conv81)
 
 
-    model = Model(input = inputs, output = [classfier])
+    model = Model(inputs = inputs, outputs = [classfier])
     print(model.summary())
     return model
 
