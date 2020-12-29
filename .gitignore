@@ -135,3 +135,5 @@ dmypy.json
 *.rar
 *.tar.gz
 *.save
+
+*.hdf5

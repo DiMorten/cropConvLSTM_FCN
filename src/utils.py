@@ -201,7 +201,7 @@ def check_folder(folder_dir):
 
 def load_image(patch):
     # Read Image
-    print (patch)
+    print ('loading im in path',patch)
     gdal_header = gdal.Open(patch)
     # get array
     img = gdal_header.ReadAsArray()
