@@ -11,6 +11,8 @@ import keras
 from collections import Counter
 from tensorflow.python.keras.utils.data_utils import Sequence
 import deb
+import pdb
+import cv2
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 
 class DataGenerator(keras.utils.Sequence):
@@ -110,6 +112,14 @@ class DataGenerator(keras.utils.Sequence):
             lab_tmp = self.label[self.coords[0][idx_tmp[i]]-self.patch_size//2:self.coords[0][idx_tmp[i]]+self.patch_size//2+self.patch_size%2,
                           self.coords[1][idx_tmp[i]]-self.patch_size//2:self.coords[1][idx_tmp[i]]+self.patch_size//2+self.patch_size%2]
 
+            #print(patch_tmp[...,-2].min(),np.average(patch_tmp[...,-2]),patch_tmp[...,-2].max())
+#            np.save("patch_sample.npy",patch_tmp)
+            #sample_patch = patch_tmp[...,-2].copy()
+            #sample_patch = (sample_patch + 1.3) * 70 / 3.5
+            #print(sample_patch.min(),np.average(sample_patch),sample_patch.max())
+            #cv2.imwrite("sample_patch.png",sample_patch.astype(np.uint8))
+            #cv2.imwrite('lab_tmp.png',lab_tmp*20)
+            #pdb.set_trace()
             #depth_tmp = self.depth[self.coords[0][idx_tmp[i]]-self.patch_size//2:self.coords[0][idx_tmp[i]]+self.patch_size//2+self.patch_size%2,
             #              self.coords[1][idx_tmp[i]]-self.patch_size//2:self.coords[1][idx_tmp[i]]+self.patch_size//2+self.patch_size%2]
 

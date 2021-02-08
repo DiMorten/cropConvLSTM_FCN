@@ -28,7 +28,7 @@ from keras.models import Model, load_model
 import keras
 from sklearn.cluster import KMeans
 import gc
-from loss import categorical_focal_loss, masked_mse, accuracy_mask, f_score
+from loss import categorical_focal_loss, masked_mse, accuracy_mask, f_score, categorical_focal_ignoring_last_label
 from collections import Counter, OrderedDict
 from sklearn import preprocessing as pp
 import joblib
@@ -42,25 +42,58 @@ from pathlib import Path
 import colorama
 from dataSource import CampoVerdeSAR
 import deb
-
+import matplotlib.pyplot as plt
+import time, datetime
+import cv2
 colorama.init()
 
-def im_load(path):
-    im_names=['20151029_S1','20151110_S1','20151122_S1','20151204_S1','20151216_S1','20160121_S1','20160214_S1','20160309_S1','20160321_S1','20160508_S1','20160520_S1','20160613_S1','20160707_S1','20160731_S1']
+def getTimeDelta(im_names):
+    time_delta=[]
+    for im in im_names:
+        date=im[:8]
+        print(date)
+        time_delta.append(time.mktime(datetime.datetime.strptime(date, 
+                                            "%Y%m%d").timetuple()))
+    print(time_delta)
+    return np.asarray(time_delta)
+im_names=['20151029_S1','20151110_S1','20151122_S1','20151204_S1','20151216_S1','20160121_S1',
+    '20160214_S1','20160309_S1','20160321_S1','20160508_S1','20160520_S1','20160613_S1',
+    '20160707_S1','20160731_S1']    
+def im_load(path,im_names):
+
     out=[]
     for im_name in im_names:
         im=np.load(path/(im_name+'.npy')).astype(np.float16)
         out.append(im)
     out=np.asarray(out).astype(np.float16)
-    print(out.shape)
+    print("Loaded images shape", out.shape)
     t_len, row, col, bands = out.shape
     out=np.moveaxis(out,0,-1)
     out=np.reshape(out,(row,col,bands*t_len))
-    print(out.shape)
+    print("Loaded images shape after t and band concatenation", out.shape)
     
     return out
 #    pdb.set_trace()
     # transpose, concatenate with bands
+def plot_input(im,mask,time_delta):
+    time_delta = np.concatenate((time_delta,time_delta),axis=0)
+    print(time_delta)
+    averageTimeseries = []
+    print("Input shape",im.shape,mask.shape)
+    for band_id in range(im.shape[-1]):
+        im_flat = im[...,band_id].flatten()
+        mask_flat = mask.flatten()
+        print("t shape",im_flat.shape,mask_flat.shape)
+
+        im_flat = im_flat[mask_flat==1]
+        averageTimeseries.append(np.average(im_flat))
+    fig, ax = plt.subplots()
+    ax.plot(time_delta,averageTimeseries,marker=".")
+    ax.set(xlabel='time ID', ylabel='band',title='Image average over time')
+    plt.grid()
+    plt.show()
+        
+
 
 
 parser = argparse.ArgumentParser()
@@ -95,6 +128,10 @@ if __name__ == '__main__':
 
     # Load the parameters from json file
     args = parser.parse_args()
+#    args.exp_id = 'first'
+
+    args.exp_id = 'third'
+    args.dataset = 'cv'
 
     
     args.img_data=Path(args.img_data)
@@ -106,8 +143,11 @@ if __name__ == '__main__':
            
     # load train image
     #image = np.load(args.img_data)
-    image = im_load(args.img_data)
-    print(image.shape)
+    image = im_load(args.img_data,im_names)
+    time_delta = getTimeDelta(im_names)
+    deb.prints(image.shape)
+    deb.prints(time_delta)
+
     #image = np.rollaxis(image,0,3)
     row,col,bands = image.shape
     params.channels = bands
@@ -115,7 +155,7 @@ if __name__ == '__main__':
     # load label image for train
     labels = load_image(args.gt_tr)
     mask = load_image(args.train_test_mask)
-
+#    plot_input(image,mask,time_delta)
 
     if val_mode==True:
         # load label image for dev
@@ -163,8 +203,12 @@ if __name__ == '__main__':
             image = image.reshape(row,col,bands)
             
             if args.mode == "Test":
+                params.ovrl_test = 0
                 params.ovrl = params.ovrl_test
             
+            #if args.plot_histogram == True:
+            #    plot_histogram(image)
+
             image_tr, stride, step_row, step_col, overlap = add_padding(image, params.patch_size, params.ovrl)
         
             labels_tr, _, _, _, _ = add_padding(labels, params.patch_size, params.ovrl)
@@ -173,11 +217,27 @@ if __name__ == '__main__':
             # get coords
             coords_tr = extract_patches_coord(labels_tr, params.patch_size, stride, train = True)
 ##            coords_val = extract_patches_coord(labels_val, params.patch_size, stride, train = False)
-            
+            deb.prints(coords_tr.shape)
+            coords_tr_idx = range(coords_tr.shape[0])
+            val_n = round(coords_tr.shape[0]*0.01)
+            deb.prints(val_n)
+            deb.prints(len(coords_tr_idx))
+
+            coords_val_idx = np.random.choice(coords_tr_idx,val_n,replace=False)
+            coords_val = coords_tr[coords_val_idx]
+            coords_tr = np.delete(coords_tr, coords_val_idx, axis = 0)
+
+            print("val coords were extracted")
+            deb.prints(coords_tr.shape)
+            deb.prints(coords_val.shape)
             coords_tr = np.rollaxis(coords_tr,1,0)
-            print(coords_tr.shape)
+            coords_val = np.rollaxis(coords_val,1,0)
+
+            deb.prints(coords_tr.shape)
+
+			
+
 ##            pdb.set_trace()
-##            coords_val = np.rollaxis(coords_val,1,0)
               
             #depth_tr, _, _, _, _ = add_padding(depth, params.patch_size, params.ovrl)
         
@@ -185,17 +245,13 @@ if __name__ == '__main__':
             
             # convert original classes to ordered classes
             classes = np.unique(labels_tr)
-            deb.prints(classes)
-            labels_tr = labels_tr-1
-##            labels_val = labels_val-1
-            params.classes = len(classes)-1
-            labels_tr[labels_tr==255] = params.classes
-            classes = np.unique(labels_tr)
-            deb.prints(classes)
+
 
 ##            labels_val[labels_val==255] = params.classes
             tmp_tr = labels_tr.copy()
 ##            tmp_val = labels_val.copy()
+
+            print(" debugging class change to consecutive values")
 
             deb.prints(labels_tr.shape)
             deb.prints(np.unique(labels_tr,return_counts=True))  
@@ -205,7 +261,24 @@ if __name__ == '__main__':
                 labels_tr[tmp_tr == classes[j]] = labels2new_labels[classes[j]]
 ##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
             deb.prints(labels_tr.shape)
-            deb.prints(np.unique(labels_tr,return_counts=True))            
+            deb.prints(np.unique(labels_tr,return_counts=True))    
+
+            print(" debuging class change to 0")
+            deb.prints(classes)
+            deb.prints(np.unique(labels_tr,return_counts=True))  
+
+            labels_tr = labels_tr-1
+##            labels_val = labels_val-1
+            params.classes = len(classes)-1
+            deb.prints(params.classes)  
+            deb.prints(np.unique(labels_tr,return_counts=True))  
+            labels_tr[labels_tr==255] = params.classes
+            deb.prints(np.unique(labels_tr,return_counts=True))  
+            classes = np.unique(labels_tr)
+            deb.prints(classes)
+            print("end debuging class change to 0")   
+            cv2.imwrite('labels_sample_full.png',labels_tr*20)   
+  
         if args.mode == "Train":       
             # Set the logger
             count_cl = dict(sorted(Counter(labels_tr[labels_tr!=params.classes]).items()))
@@ -215,31 +288,32 @@ if __name__ == '__main__':
             print("Ratio Data ---> {}".format(ratio))
             np.save(os.path.join(args.model_dir,'ratio'),ratio)
             
+            
             set_logger(os.path.join(model_k, 'train.log'))
             # Check that we are not overwriting some previous experiment
             # Comment these lines if you are developing your model and don't care about overwritting
-            file_output = os.path.join(model_k,'bestmodel_{}.hdf5'.format(i))
+            file_output = os.path.join(model_k,'bestmodel_{}_{}.hdf5'.format(args.dataset, args.exp_id))
             model_dir_has_best_weights = os.path.isfile(file_output)
             overwritting = model_dir_has_best_weights and args.restore_from is None
-            assert not overwritting, "Weights found in model_dir, aborting to avoid overwrite"
+            #assert not overwritting, "Weights found in model_dir, aborting to avoid overwrite"
                
             # Shuflle
             index_tr = np.random.choice(len(coords_tr[0]), len(coords_tr[0]), replace=False)
             
             # index validation
-##            index_val = np.array(range(len(coords_val[0])))
+            index_val = np.array(range(len(coords_val[0])))
 
             # Define generators
             dim = (params.patch_size, params.patch_size, params.channels)
 
             training_generator = DataGenerator(image_tr, labels_tr, coords_tr, index_tr, params.channels, 
                                                params.patch_size, params.batch_size, dim,  
-                                               samp_per_epoch= 1965, shuffle=True, 
+                                               samp_per_epoch= params.samp_per_epoch, shuffle=True,  #samp_per_epoch= 1965
                                                use_augm = params.use_augm)
 ##samp_per_epoch= params.samp_per_epoch
 
-##            validation_generator = DataGenerator(image_tr, labels_val, coords_val, index_val, params.channels, 
-##                                                 params.patch_size, params.batch_size, dim,  shuffle=True)
+            validation_generator = DataGenerator(image_tr, labels_tr, coords_val, index_val, params.channels, 
+                                                 params.patch_size, params.batch_size, dim,  shuffle=True)
             
             # validation_generator = DataGenerator(image_tr, labels_val, coords_val, index_val, params.channels, 
             #                                      params.patch_size, params.batch_size, dim,
@@ -259,6 +333,9 @@ if __name__ == '__main__':
             
             cl_ind = [x for x in range(params.classes)]
             losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind)}
+            #losses = {"cl_output": categorical_focal_ignoring_last_label(alpha=0.25,gamma=2)}
+            
+            
             # losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind), 
             #           "reg_output": masked_mse()}
             lossWeights = {"cl_output": 1.0}
@@ -273,32 +350,38 @@ if __name__ == '__main__':
             
             # Train model on dataset
             history = model.fit_generator(generator=training_generator,
-##                                validation_data=validation_generator,
-                                epochs = params.num_epochs)
+                                validation_data=validation_generator,
+                                epochs = params.num_epochs,
                                 #steps_per_epoch = params.samp_per_epoch,
-##                                callbacks = [Monitor(validation=training_generator,patience = 15,
-##                                                    model_dir=model_k, classes=params.classes)]) 
+                                callbacks = [Monitor(validation=validation_generator,patience = 15,
+                                                    model_dir=model_k, classes=params.classes)]) 
             model.save(file_output)
             
             # save training history        
             filename = os.path.join(model_k,'history_plot_acc.png')     
-            Results(history.history['cl_output_f_acc'], 
-                    history.history['val_cl_output_f_acc'],
-                    history.history['cl_output_loss'],
-                    history.history['val_cl_output_loss'],
-                    filename).show_result()
             
-            filename = os.path.join(model_k,'history_plot_f1batch.png')     
-            Results(history.history['mean_f1'], 
-                    history.history['val_cl_output_f_acc'],
-                    history.history['reg_output_loss'],
-                    history.history['val_reg_output_loss'],
-                    filename).show_result()
-            
+            try:
+                Results(history.history['cl_output_f_acc'], 
+                        history.history['val_cl_output_f_acc'],
+                        history.history['cl_output_loss'],
+                        history.history['val_cl_output_loss'],
+                        filename).show_result()
+                
+                filename = os.path.join(model_k,'history_plot_f1batch.png')     
+                Results(history.history['mean_f1'], 
+                        history.history['val_cl_output_f_acc'],
+                        history.history['reg_output_loss'],
+                        history.history['val_reg_output_loss'],
+                        filename).show_result()
+            except:
+                print("Results object didn't work")
+
             
         elif args.mode == "Test":
+            print("TEST MODE =====================")
             ratio = np.load(os.path.join(args.model_dir,'ratio.npy'))
-            if not os.path.isfile(os.path.join(model_k, 'pred_prob_{}_{}.npy'.format(params.patch_size, params.ovrl))):
+#            if not os.path.isfile(os.path.join(model_k, 'pred_prob_{}_{}.npy'.format(params.patch_size, params.ovrl))):
+            if True:
                 # Load moodel
                 cl_ind = [x for x in range(params.classes)]
                 file_model = os.path.join(model_k,'bestmodel_{}.hdf5'.format(i))
@@ -326,9 +409,57 @@ if __name__ == '__main__':
             
             
                 cl_img = cl_img[overlap//2:-step_row,overlap//2:-step_col,:]
+                labels_tr = labels_tr[overlap//2:-step_row,overlap//2:-step_col]
+
+                print("==== Predictions were applied to the entire image")
                 #reg_img = reg_img[overlap//2:-step_row,overlap//2:-step_col]
                 
                 np.save(os.path.join(model_k, 'pred_prob_{}_{}'.format(params.patch_size, params.ovrl)), cl_img)
+                print(cl_img.min(), np.average(cl_img), cl_img.max())
+                deb.prints(cl_img.shape)
+                deb.prints(np.unique(labels_tr,return_counts=True))
+                deb.prints(np.unique(cl_img.argmax(axis=-1),return_counts=True))
+                
+                labels_tr_mask =labels_tr.copy()
+                labels_tr_mask[mask==0]=9
+
+                cl_int =cl_img.argmax(axis=-1).astype(np.uint8)
+                cl_int_mask = cl_int.copy()
+                cl_int_mask[mask==0]=9
+                cl_int_mask[mask==1]=9
+                
+
+                deb.prints(np.unique(labels_tr_mask,return_counts=True))
+                deb.prints(np.unique(cl_int_mask,return_counts=True))                
+
+                #pdb.set_trace()
+                print("cl_int_mask stats:")
+                print(cl_int_mask.min(), np.average(cl_int_mask), cl_int_mask.max())
+                
+                cv2.imwrite("result.png",cl_int*25)
+
+                cv2.imwrite("result_test.png",cl_int_mask*25)
+
+
+                cv2.imwrite("result_gt.png",labels_tr_mask*25)
+                #pdb.set_trace()
+
+                # metrics
+                cl_flat = cl_int_mask.flatten()
+                labels_flat = labels_tr_mask.flatten()
+                mask_flat = mask.flatten()
+                cl_flat = cl_flat[mask_flat==2]
+                labels_flat = labels_flat[mask_flat==2] # hadnt i kept only train areas?
+
+                from sklearn.metrics import f1_score, accuracy_score
+                f1 = f1_score(labels_flat,cl_flat,average=None)
+                print("f1",f1)
+                f1 = f1_score(labels_flat,cl_flat,average='macro')
+                print("f1",f1)
+
+                oa = accuracy_score(labels_flat,cl_flat)
+                print("oa",oa)
+
                 #np.save(os.path.join(model_k, 'pred_depth_{}_{}'.format(params.patch_size, params.ovrl)), reg_img)
         
                 gc.collect()

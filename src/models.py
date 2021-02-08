@@ -24,9 +24,10 @@ from keras.callbacks import Callback
 from sklearn.metrics import f1_score, make_scorer, confusion_matrix, accuracy_score, precision_score, recall_score, precision_recall_curve
 from collections import Counter, OrderedDict
 from utils import plot_figures
+import pdb
 elu_alpha = 0.1
 
-
+import deb
 
 
 
@@ -145,18 +146,24 @@ class Monitor(Callback):
 
      
     def on_epoch_end(self, epoch, logs={}):
+        #deb.prints(range(len(self.validation)))
         # num = np.random.randint(0,len(self.validation),1)
         for batch_index in range(len(self.validation)):
             val_targ = self.validation[batch_index][1][0]   
             val_pred = self.model.predict(self.validation[batch_index][0])
-            val_prob = val_pred[0]
-            val_depth = val_pred[1]
+##            deb.prints(val_pred.shape) # was programmed to get two outputs> classif. and depth
+##            deb.prints(val_targ.shape) # was programmed to get two outputs> classif. and depth
+##            deb.prints(len(self.validation[batch_index][1])) # was programmed to get two outputs> classif. and depth
+
+            # val_prob = val_pred[0]
+            val_prob = val_pred.copy()
+            # val_depth = val_pred[1]
             val_predict = np.argmax(val_prob,axis=-1)
             if batch_index == 0:
                 plot_figures(self.validation[batch_index][0],val_targ,val_predict,
-                             val_prob,val_depth,self.validation[batch_index][1][1],self.model_dir,epoch, 
+                             val_prob,self.model_dir,epoch, 
                              self.classes,'val')
-            
+            val_targ = np.squeeze(val_targ)
             val_predict = val_predict[val_targ<self.classes]
             val_targ = val_targ[val_targ<self.classes]
             self.pred.extend(val_predict)
