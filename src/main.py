@@ -220,6 +220,8 @@ if __name__ == '__main__':
             deb.prints(coords_tr.shape)
             coords_tr_idx = range(coords_tr.shape[0])
             val_n = round(coords_tr.shape[0]*0.01)
+            val_n = round(coords_tr.shape[0]*0.0005)
+
             deb.prints(val_n)
             deb.prints(len(coords_tr_idx))
 
