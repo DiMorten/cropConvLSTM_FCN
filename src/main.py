@@ -46,7 +46,7 @@ import matplotlib.pyplot as plt
 import time, datetime
 import cv2
 colorama.init()
-
+from utils import cmap, plot_figures_test
 def getTimeDelta(im_names):
     time_delta=[]
     for im in im_names:
@@ -130,7 +130,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 #    args.exp_id = 'first'
 
-    args.exp_id = 'third'
+    args.exp_id = 'fourth'
+#    args.exp_id = 'third'
+
     args.dataset = 'cv'
 
     
@@ -203,7 +205,8 @@ if __name__ == '__main__':
             image = image.reshape(row,col,bands)
             
             if args.mode == "Test":
-                params.ovrl_test = 0
+#                params.ovrl_test = 0.5
+                params.ovrl_test = 0.98
                 params.ovrl = params.ovrl_test
             
             #if args.plot_histogram == True:
@@ -227,7 +230,8 @@ if __name__ == '__main__':
 
             coords_val_idx = np.random.choice(coords_tr_idx,val_n,replace=False)
             coords_val = coords_tr[coords_val_idx]
-            coords_tr = np.delete(coords_tr, coords_val_idx, axis = 0)
+            if args.mode== "Train":
+                coords_tr = np.delete(coords_tr, coords_val_idx, axis = 0)
 
             print("val coords were extracted")
             deb.prints(coords_tr.shape)
@@ -295,6 +299,7 @@ if __name__ == '__main__':
             # Check that we are not overwriting some previous experiment
             # Comment these lines if you are developing your model and don't care about overwritting
             file_output = os.path.join(model_k,'bestmodel_{}_{}.hdf5'.format(args.dataset, args.exp_id))
+            deb.prints(file_output)
             model_dir_has_best_weights = os.path.isfile(file_output)
             overwritting = model_dir_has_best_weights and args.restore_from is None
             #assert not overwritting, "Weights found in model_dir, aborting to avoid overwrite"
@@ -386,7 +391,9 @@ if __name__ == '__main__':
             if True:
                 # Load moodel
                 cl_ind = [x for x in range(params.classes)]
-                file_model = os.path.join(model_k,'bestmodel_{}.hdf5'.format(i))
+
+                file_model = os.path.join(model_k,'bestmodel_{}_{}.hdf5'.format(args.dataset, args.exp_id))
+                deb.prints(file_model)
                 model = load_model(file_model, custom_objects={"f_cat": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind),
                                                               #"f_reg": masked_mse(),
                                                               "f_acc": accuracy_mask(),
@@ -394,9 +401,10 @@ if __name__ == '__main__':
              
                 row,col,bands = image_tr.shape
                 cl_img = np.zeros((row,col,params.classes))
-                cl_img = cl_img.astype('float16')
+                #cl_img = cl_img.astype('float16')
                 #reg_img = np.zeros((row,col))
                 #reg_img = reg_img.astype('float16')
+                plot_sample=False
                 
                 for m in range(params.patch_size//2,row-params.patch_size//2,stride): 
                     for n in range(params.patch_size//2,col-params.patch_size//2,stride):
@@ -405,7 +413,22 @@ if __name__ == '__main__':
                         patch = patch.reshape((1,params.patch_size,params.patch_size,bands))
                         pred_cl = model.predict(patch)
                         _, x, y, c = pred_cl.shape
-                          
+
+                        # plot
+                        if plot_sample==True:
+                            label_patch = labels_tr[m-params.patch_size//2:m+params.patch_size//2 + params.patch_size%2,
+                                    n-params.patch_size//2:n+params.patch_size//2 + params.patch_size%2]
+
+                            mask_patch = labels_tr[m-params.patch_size//2:m+params.patch_size//2 + params.patch_size%2,
+                                    n-params.patch_size//2:n+params.patch_size//2 + params.patch_size%2]
+
+                            pred_int = pred_cl.argmax(axis=-1).astype(np.uint8)
+                            class_n = len(np.unique(labels_tr))-1
+                            #deb.prints(class_n)
+                            #deb.prints(np.average(label_patch))
+                            if np.average(label_patch)!=class_n:
+                                plot_figures_test(patch.astype(np.float32), label_patch, pred_int, pred_cl, model_k, 9, 'test')
+                        #pdb.set_trace()
                         cl_img[m-stride//2:m+stride//2,n-stride//2:n+stride//2,:] = pred_cl[0,overlap//2:x-overlap//2,overlap//2:y-overlap//2,:]
                         #reg_img[m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_reg[0,overlap//2:x-overlap//2,overlap//2:y-overlap//2,0]
             
@@ -433,8 +456,17 @@ if __name__ == '__main__':
 
                 deb.prints(np.unique(labels_tr_mask,return_counts=True))
                 deb.prints(np.unique(cl_int_mask,return_counts=True))                
-
+                '''
+                print("delete background") 
+                
+                cl_int_mask = cl_int_mask[labels_tr_mask<bcknd_id]
+                labels_tr_mask = labels_tr_mask[labels_tr_mask<bcknd_id]
+                deb.prints(np.unique(labels_tr_mask,return_counts=True))
+                deb.prints(np.unique(cl_int_mask,return_counts=True))                
+                '''
                 #pdb.set_trace()
+                bcknd_id = len(np.unique(labels_tr_mask)) - 1
+                deb.prints(bcknd_id)
                 print("cl_int_mask stats:")
                 print(cl_int_mask.min(), np.average(cl_int_mask), cl_int_mask.max())
                 
@@ -442,9 +474,23 @@ if __name__ == '__main__':
 
                 cv2.imwrite("result_test.png",cl_int_mask*25)
 
-
                 cv2.imwrite("result_gt.png",labels_tr_mask*25)
                 #pdb.set_trace()
+
+                im = plt.imshow(cl_int_mask, cmap=cmap,vmin=0, vmax=len(np.unique(labels_tr_mask)))
+                plt.axis('off')
+                set_name = 'test'
+                plt.savefig(os.path.join(model_k, set_name + 'predict.png'), dpi = 3000, format='png', bbox_inches = 'tight')
+                plt.clf()
+                plt.close()
+
+                im = plt.imshow(labels_tr_mask, cmap=cmap,vmin=0, vmax=len(np.unique(labels_tr_mask)))
+                plt.axis('off')
+                set_name = 'test'
+                plt.savefig(os.path.join(model_k, set_name + 'label.png'), dpi = 3000, format='png', bbox_inches = 'tight')
+                plt.clf()
+                plt.close()
+
 
                 # metrics
                 cl_flat = cl_int_mask.flatten()
@@ -452,8 +498,14 @@ if __name__ == '__main__':
                 mask_flat = mask.flatten()
                 cl_flat = cl_flat[mask_flat==2]
                 labels_flat = labels_flat[mask_flat==2] # hadnt i kept only train areas?
+                print("Unique before metrics")
+                deb.prints(np.unique(labels_flat,return_counts=True))
+                deb.prints(np.unique(cl_flat,return_counts=True))                
 
-                from sklearn.metrics import f1_score, accuracy_score
+
+
+                from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score
+                
                 f1 = f1_score(labels_flat,cl_flat,average=None)
                 print("f1",f1)
                 f1 = f1_score(labels_flat,cl_flat,average='macro')
@@ -461,9 +513,21 @@ if __name__ == '__main__':
 
                 oa = accuracy_score(labels_flat,cl_flat)
                 print("oa",oa)
+                
 
+
+                f1 = np.round(f1_score(labels_flat, cl_flat, average=None)*100,2)
+                precision = np.round(precision_score(labels_flat, cl_flat, average=None)*100,2)
+                recall= np.round(recall_score(labels_flat, cl_flat, average=None)*100,2)
+                
+                #update the logs dictionary:
+                mean_f1 = np.sum(f1)/bcknd_id
+
+                print(f' — val_f1: {f1}\n — val_precision: {precision}\n — val_recall: {recall}')
+                print(f' — mean_f1: {mean_f1}')
+                
                 #np.save(os.path.join(model_k, 'pred_depth_{}_{}'.format(params.patch_size, params.ovrl)), reg_img)
-        
+
                 gc.collect()
                 del model
                 

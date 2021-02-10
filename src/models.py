@@ -180,7 +180,9 @@ class Monitor(Callback):
 
         print(f' — val_f1: {f1}\n — val_precision: {precision}\n — val_recall: {recall}')
         print(f' — mean_f1: {mean_f1}')
-        
+
+        oa = np.round(accuracy_score(self.targ, self.pred)*100,2)
+        print("oa",oa)        
         current = logs.get("mean_f1")
         if np.less(self.best, current):
             self.best = current
