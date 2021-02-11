@@ -132,6 +132,7 @@ if __name__ == '__main__':
 
     args.exp_id = 'fourth'
 #    args.exp_id = 'third'
+#    args.exp_id = 'fifth_moreval'
 
     args.dataset = 'cv'
 
@@ -206,7 +207,7 @@ if __name__ == '__main__':
             
             if args.mode == "Test":
 #                params.ovrl_test = 0.5
-                params.ovrl_test = 0.98
+                params.ovrl_test = 0.3
                 params.ovrl = params.ovrl_test
             
             #if args.plot_histogram == True:
@@ -224,6 +225,7 @@ if __name__ == '__main__':
             coords_tr_idx = range(coords_tr.shape[0])
             val_n = round(coords_tr.shape[0]*0.01)
             val_n = round(coords_tr.shape[0]*0.0005)
+            val_n = round(coords_tr.shape[0]*0.0015)
 
             deb.prints(val_n)
             deb.prints(len(coords_tr_idx))
