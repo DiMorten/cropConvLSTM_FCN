@@ -97,7 +97,7 @@ def plot_input(im,mask,time_delta):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_dir', default='../results',
+parser.add_argument('--model_dir', default='results',
                     help="Experiment directory containing params.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, directory or file containing weights to reload before training")
@@ -116,7 +116,7 @@ parser.add_argument('--train_test_mask', default='../data/cv/TrainTestMask.tif',
 #                    help="Path of the refrence train image")
 parser.add_argument('--mask', default='../data/cv/TrainTestMask.tif', 
                     help="Path of the refrence train image")
-parser.add_argument('--mode', default="Train", 
+parser.add_argument('--mode', default="Test", 
                     help="If True use a dev set, if False, use training set to monitor the metrics")
 
 if __name__ == '__main__':
@@ -130,9 +130,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 #    args.exp_id = 'first'
 
-    args.exp_id = 'fourth'
+#    args.exp_id = 'fourth'
 #    args.exp_id = 'third'
-#    args.exp_id = 'fifth_moreval'
+    args.exp_id = 'fifth_moreval'
+#    args.exp_id = 'sixth_moreval'
 
     args.dataset = 'cv'
 
@@ -170,7 +171,13 @@ if __name__ == '__main__':
     if args.mode == "Train":
         labels[mask!=1]=0
     else:
-        labels[mask!=2]=0
+#       
+        test_on_train_set = False
+        if test_on_train_set==False:
+            labels[mask!=2]=0
+        else:
+            labels[mask!=1]=0
+
 #        labels = load_image(args.gt_test)
         
     labels = labels.astype('uint8')
@@ -194,12 +201,16 @@ if __name__ == '__main__':
             if args.mode == "Train":
                 img_tmp = image[coords]
                 scaler = pp.StandardScaler().fit(img_tmp)
-                img_tmp = []                
+                img_tmp = []
                 scaler_filename = os.path.join(args.model_dir,"scaler.save")
+                print("Train. Saving scaler",scaler_filename)                
                 joblib.dump(scaler, scaler_filename)
             else:
                 scaler_filename = os.path.join(args.model_dir,"scaler.save")
+                print("Test. Loading scaler",scaler_filename)
                 scaler = joblib.load(scaler_filename)
+            
+            print("Scaler parameters",scaler.mean_, scaler.var_)
         
             image = image.reshape(row*col,bands)
             image = scaler.transform(image)
@@ -259,33 +270,47 @@ if __name__ == '__main__':
             tmp_tr = labels_tr.copy()
 ##            tmp_val = labels_val.copy()
 
+            if args.mode=="Train":
+                print(" debuging class change to 0")
+                deb.prints(classes)
+                deb.prints(np.unique(labels_tr,return_counts=True))
+                
+                #classes_label_original = np.unique(labels_tr)
+                deb.prints(classes)
+                labels_tr = labels_tr-1
+    ##            labels_val = labels_val-1
+                deb.prints(np.unique(labels_tr,return_counts=True))  
+                labels_tr[labels_tr==255] = classes[-1]
+                deb.prints(np.unique(labels_tr,return_counts=True))  
+                classes = np.unique(labels_tr)
+                deb.prints(classes)
+                print("end debuging class change to 0") 
+                
+                
             print(" debugging class change to consecutive values")
 
             deb.prints(labels_tr.shape)
             deb.prints(np.unique(labels_tr,return_counts=True))  
             labels2new_labels = dict((c, i) for i, c in enumerate(classes))
             new_labels2labels = dict((i, c) for i, c in enumerate(classes))
-            for j in range(len(classes)):
-                labels_tr[tmp_tr == classes[j]] = labels2new_labels[classes[j]]
-##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
-            deb.prints(labels_tr.shape)
-            deb.prints(np.unique(labels_tr,return_counts=True))    
 
-            print(" debuging class change to 0")
-            deb.prints(classes)
-            deb.prints(np.unique(labels_tr,return_counts=True))  
+            deb.prints(labels2new_labels)
+            deb.prints(new_labels2labels)
 
-            labels_tr = labels_tr-1
-##            labels_val = labels_val-1
             params.classes = len(classes)-1
             deb.prints(params.classes)  
-            deb.prints(np.unique(labels_tr,return_counts=True))  
-            labels_tr[labels_tr==255] = params.classes
-            deb.prints(np.unique(labels_tr,return_counts=True))  
-            classes = np.unique(labels_tr)
-            deb.prints(classes)
-            print("end debuging class change to 0")   
-            cv2.imwrite('labels_sample_full.png',labels_tr*20)   
+
+            if args.mode=="Train":
+                
+                
+                for j in range(len(classes)):
+                    labels_tr[tmp_tr == classes[j]] = labels2new_labels[classes[j]]
+    ##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
+                deb.prints(labels_tr.shape)
+                deb.prints(np.unique(labels_tr,return_counts=True))    
+
+                  
+                cv2.imwrite('labels_sample_full.png',labels_tr*20)   
   
         if args.mode == "Train":       
             # Set the logger
@@ -447,17 +472,43 @@ if __name__ == '__main__':
                 deb.prints(np.unique(labels_tr,return_counts=True))
                 deb.prints(np.unique(cl_img.argmax(axis=-1),return_counts=True))
                 
-                labels_tr_mask =labels_tr.copy()
-                labels_tr_mask[mask==0]=9
-
+                #labels_tr_mask =labels_tr.copy()
+                #labels_tr_mask[mask==0]=9
+                labels_tr_copy = labels_tr.copy()
                 cl_int =cl_img.argmax(axis=-1).astype(np.uint8)
-                cl_int_mask = cl_int.copy()
-                cl_int_mask[mask==0]=9
-                cl_int_mask[mask==1]=9
+
+                classes_prediction = np.unique(cl_int)
+                tmp_cl_int = cl_int.copy()
+                
+                classes_labels_unshifted = np.unique(labels_tr)
+                labels_shifted = labels_tr - 1
+                labels_shifted[labels_shifted==255] = classes_labels_unshifted[-1]
+                classes_labels_shifted = np.unique(labels_shifted)
+                new_labels2labels = dict((i, c) for i, c in enumerate(classes_labels_shifted))
+                deb.prints(new_labels2labels)
+                for j in range(len(classes_prediction)):
+#                    labels_tr[tmp_tr == classes[j]] = labels2new_labels[classes[j]]
+                    cl_int[tmp_cl_int == classes_prediction[j]] = new_labels2labels[classes_prediction[j]]
+                deb.prints(np.unique(cl_int,return_counts=True)) 
+                print("Adding 1 to classification result")
+                cl_int = cl_int + 1
+                #t_class = np.unique(labels_tr)[-1]
+                #cl_int[cl_int == last_class] = 0
+                deb.prints(np.unique(cl_int,return_counts=True))                
+                print("Masking classification result")
+                
+                cl_int[mask==0]=0
+                if test_on_train_set==False:
+                    cl_int[mask==1]=0
+                    labels_tr[mask==1]=0
+                else:
+                    cl_int[mask==2]=0
+                    labels_tr[mask==2]=0
                 
 
-                deb.prints(np.unique(labels_tr_mask,return_counts=True))
-                deb.prints(np.unique(cl_int_mask,return_counts=True))                
+                deb.prints(np.unique(cl_int,return_counts=True))                
+                deb.prints(np.unique(labels_tr,return_counts=True))
+
                 '''
                 print("delete background") 
                 
@@ -467,26 +518,24 @@ if __name__ == '__main__':
                 deb.prints(np.unique(cl_int_mask,return_counts=True))                
                 '''
                 #pdb.set_trace()
-                bcknd_id = len(np.unique(labels_tr_mask)) - 1
-                deb.prints(bcknd_id)
                 print("cl_int_mask stats:")
-                print(cl_int_mask.min(), np.average(cl_int_mask), cl_int_mask.max())
+                print(cl_int.min(), np.average(cl_int), cl_int.max())
                 
                 cv2.imwrite("result.png",cl_int*25)
 
-                cv2.imwrite("result_test.png",cl_int_mask*25)
+                cv2.imwrite("result_test.png",cl_int*25)
 
-                cv2.imwrite("result_gt.png",labels_tr_mask*25)
+                cv2.imwrite("result_gt.png",labels_tr*25)
                 #pdb.set_trace()
 
-                im = plt.imshow(cl_int_mask, cmap=cmap,vmin=0, vmax=len(np.unique(labels_tr_mask)))
+                im = plt.imshow(cl_int, cmap=cmap,vmin=0, vmax=len(np.unique(labels_tr)))
                 plt.axis('off')
                 set_name = 'test'
                 plt.savefig(os.path.join(model_k, set_name + 'predict.png'), dpi = 3000, format='png', bbox_inches = 'tight')
                 plt.clf()
                 plt.close()
 
-                im = plt.imshow(labels_tr_mask, cmap=cmap,vmin=0, vmax=len(np.unique(labels_tr_mask)))
+                im = plt.imshow(labels_tr, cmap=cmap,vmin=0, vmax=len(np.unique(labels_tr)))
                 plt.axis('off')
                 set_name = 'test'
                 plt.savefig(os.path.join(model_k, set_name + 'label.png'), dpi = 3000, format='png', bbox_inches = 'tight')
@@ -495,18 +544,25 @@ if __name__ == '__main__':
 
 
                 # metrics
-                cl_flat = cl_int_mask.flatten()
-                labels_flat = labels_tr_mask.flatten()
-                mask_flat = mask.flatten()
-                cl_flat = cl_flat[mask_flat==2]
-                labels_flat = labels_flat[mask_flat==2] # hadnt i kept only train areas?
+#                cl_flat = cl_int[mask==2]
+
+
+#                labels_flat = labels_tr_mask.flatten()
+#                mask_flat = mask.flatten()
+                if test_on_train_set==False:
+                    cl_flat = cl_int[mask==2]
+                    labels_flat = labels_tr[mask==2] # hadnt i kept only train areas?
+                else:
+                    cl_flat = cl_int[mask==1]
+                    labels_flat = labels_tr[mask==1] # hadnt i kept only train areas?
+                
                 print("Unique before metrics")
                 deb.prints(np.unique(labels_flat,return_counts=True))
                 deb.prints(np.unique(cl_flat,return_counts=True))                
 
 
 
-                from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score
+                from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, confusion_matrix
                 
                 f1 = f1_score(labels_flat,cl_flat,average=None)
                 print("f1",f1)
@@ -521,9 +577,12 @@ if __name__ == '__main__':
                 f1 = np.round(f1_score(labels_flat, cl_flat, average=None)*100,2)
                 precision = np.round(precision_score(labels_flat, cl_flat, average=None)*100,2)
                 recall= np.round(recall_score(labels_flat, cl_flat, average=None)*100,2)
-                
+
+
+                confusion_matrix = confusion_matrix(labels_flat,cl_flat)
+                print(confusion_matrix)
                 #update the logs dictionary:
-                mean_f1 = np.sum(f1)/bcknd_id
+                mean_f1 = np.sum(f1)/len(classes_prediction)
 
                 print(f' — val_f1: {f1}\n — val_precision: {precision}\n — val_recall: {recall}')
                 print(f' — mean_f1: {mean_f1}')

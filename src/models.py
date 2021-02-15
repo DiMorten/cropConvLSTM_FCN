@@ -130,6 +130,9 @@ class Monitor(Callback):
         self.best_weights = None
         self.classes = classes
         self.model_dir = model_dir
+        self.f1_history = []
+        self.oa_history = []
+        
         
     def on_train_begin(self, logs={}):
         # The number of epoch it has waited when loss is no longer minimum.
@@ -178,11 +181,15 @@ class Monitor(Callback):
         mean_f1 = np.sum(f1)/self.classes
         logs["mean_f1"]=mean_f1
 
+        self.f1_history.append(mean_f1)
+        
         print(f' — val_f1: {f1}\n — val_precision: {precision}\n — val_recall: {recall}')
         print(f' — mean_f1: {mean_f1}')
 
         oa = np.round(accuracy_score(self.targ, self.pred)*100,2)
         print("oa",oa)        
+        self.oa_history.append(oa)
+
         current = logs.get("mean_f1")
         if np.less(self.best, current):
             self.best = current
@@ -201,4 +208,7 @@ class Monitor(Callback):
     def on_train_end(self, logs=None):
         if self.stopped_epoch > 0:
             print("Epoch %05d: early stopping".format(self.stopped_epoch + 1))
+        print("f1 history",self.f1_history)
+        print("oa history",self.oa_history)
+        
 
