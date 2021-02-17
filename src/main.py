@@ -21,6 +21,7 @@ import glob
 import numpy as np
 from generator import DataGenerator
 from models import cnn, Monitor, f1_mean
+from deeplab_versions import DeepLabVersions
 from keras.utils import plot_model
 from keras.optimizers import SGD, Adadelta, Adagrad, Adam
 from keras.callbacks import ModelCheckpoint, EarlyStopping
@@ -116,7 +117,7 @@ parser.add_argument('--train_test_mask', default='../data/cv/TrainTestMask.tif',
 #                    help="Path of the refrence train image")
 parser.add_argument('--mask', default='../data/cv/TrainTestMask.tif', 
                     help="Path of the refrence train image")
-parser.add_argument('--mode', default="Test", 
+parser.add_argument('--mode', default="Eval", 
                     help="If True use a dev set, if False, use training set to monitor the metrics")
 
 if __name__ == '__main__':
@@ -132,8 +133,10 @@ if __name__ == '__main__':
 
 #    args.exp_id = 'fourth'
 #    args.exp_id = 'third'
-    args.exp_id = 'fifth_moreval'
+####    args.exp_id = 'fifth_moreval'
 #    args.exp_id = 'sixth_moreval'
+#    args.exp_id = 'seventh_moreval'
+    args.exp_id = 'deeplab_rep1'
 
     args.dataset = 'cv'
 
@@ -267,7 +270,6 @@ if __name__ == '__main__':
 
 
 ##            labels_val[labels_val==255] = params.classes
-            tmp_tr = labels_tr.copy()
 ##            tmp_val = labels_val.copy()
 
             if args.mode=="Train":
@@ -289,6 +291,7 @@ if __name__ == '__main__':
                 
             print(" debugging class change to consecutive values")
 
+
             deb.prints(labels_tr.shape)
             deb.prints(np.unique(labels_tr,return_counts=True))  
             labels2new_labels = dict((c, i) for i, c in enumerate(classes))
@@ -301,13 +304,18 @@ if __name__ == '__main__':
             deb.prints(params.classes)  
 
             if args.mode=="Train":
-                
+                deb.prints(classes)
+                tmp_tr = labels_tr.copy()
                 
                 for j in range(len(classes)):
+                    print("class, new class",classes[j], labels2new_labels[classes[j]])
                     labels_tr[tmp_tr == classes[j]] = labels2new_labels[classes[j]]
     ##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
+                print("Classes to newclasses ok")
                 deb.prints(labels_tr.shape)
-                deb.prints(np.unique(labels_tr,return_counts=True))    
+                deb.prints(np.unique(labels_tr,return_counts=True))  
+                #pdb.set_trace()
+                  
 
                   
                 cv2.imwrite('labels_sample_full.png',labels_tr*20)   
@@ -357,12 +365,14 @@ if __name__ == '__main__':
             # Define optimazer
             optimizer = Adam(lr=params.learning_rate)
             # Define model
+            params.add_reg = False
             if params.model == "custom":
                 model = cnn(img_shape=dim, nb_classes=params.classes)   
             
             else:
                 model = DeepLabVersions(dim, params)
-                        
+            print(model.summary())
+            
             ##plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)
             
             cl_ind = [x for x in range(params.classes)]
@@ -465,8 +475,9 @@ if __name__ == '__main__':
 
                 print("==== Predictions were applied to the entire image")
                 #reg_img = reg_img[overlap//2:-step_row,overlap//2:-step_col]
-                
-                np.save(os.path.join(model_k, 'pred_prob_{}_{}'.format(params.patch_size, params.ovrl)), cl_img)
+                pred_save_path = os.path.join(model_k, 'pred_prob_{}_{}_{}'.format(params.patch_size, params.ovrl, args.exp_id))
+                np.save(pred_save_path, cl_img)
+                print("Saved in ",pred_save_path)
                 print(cl_img.min(), np.average(cl_img), cl_img.max())
                 deb.prints(cl_img.shape)
                 deb.prints(np.unique(labels_tr,return_counts=True))
@@ -600,8 +611,16 @@ if __name__ == '__main__':
             oa_list = list()
             kapp_list = list()
             
-            classes = np.unique(labels)
-            new_labels2labels = dict((i, c) for i, c in enumerate(classes))
+            #classes = np.unique(labels)
+
+                
+            classes_labels_unshifted = np.unique(labels)
+            labels_shifted = labels - 1
+            labels_shifted[labels_shifted==255] = classes_labels_unshifted[-1]
+            classes_labels_shifted = np.unique(labels_shifted)
+            new_labels2labels = dict((i, c) for i, c in enumerate(classes_labels_shifted))
+
+            #new_labels2labels = dict((i, c) for i, c in enumerate(classes))
             
             p,r,f,oa,kapp,aa = metrics(params, labels, model_k, new_labels2labels)
             aa_list.append(aa)

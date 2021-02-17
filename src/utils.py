@@ -342,9 +342,23 @@ def balance_coords(img_gt, class_list, samples_per_class, random = True):
 
 def metrics(params, label, model_dir_k,new_labels2labels):
     
-    pred_prob1 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.1.npy'))
-    pred_prob2 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3.npy'))
-    pred_prob3 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.5.npy'))
+#    pred_prob1 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.1.npy'))
+#    pred_prob2 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3.npy'))
+#    pred_prob3 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.5.npy'))
+
+#    pred_prob1 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_fifth_moreval.npy'))
+#    pred_prob2 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_fifth_moreval.npy'))
+#    pred_prob3 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_fifth_moreval.npy'))
+
+
+#    pred_prob1 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_seventh_moreval.npy'))
+#    pred_prob2 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_seventh_moreval.npy'))
+#    pred_prob3 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_seventh_moreval.npy'))
+
+    pred_prob1 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_deeplab_rep1.npy'))
+    pred_prob2 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_deeplab_rep1.npy'))
+    pred_prob3 = np.load(os.path.join(model_dir_k, 'pred_prob_128_0.3_deeplab_rep1.npy'))
+
     prob_mean = (pred_prob1+pred_prob2+pred_prob3)/3
     predict_mask_test = np.argmax(pred_prob3, axis = -1)
     prob_mean = []
@@ -355,10 +369,10 @@ def metrics(params, label, model_dir_k,new_labels2labels):
     print ('*' * 50)    
 
 
-    # lbl_tmp = predict_mask_test.copy()
-    # classes_pred = np.unique(predict_mask_test)
-    # for j in range(len(classes_pred)):
-    #     predict_mask_test[lbl_tmp == classes_pred[j]] = new_labels2labels[classes_pred[j]]      
+    lbl_tmp = predict_mask_test.copy()
+    classes_pred = np.unique(predict_mask_test)
+    for j in range(len(classes_pred)):
+        predict_mask_test[lbl_tmp == classes_pred[j]] = new_labels2labels[classes_pred[j]]      
     
     predict_mask_test = predict_mask_test+1
     

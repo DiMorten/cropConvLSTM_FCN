@@ -67,13 +67,17 @@ def DeepLabVersions(input_shp, params, input_tensor=None):
     print("[INFO] loading {}...".format(params.model))
     if params.model != "custom":
         
-        if not params.weights: weights=None
+#        if not params.weights: weights=None
+        weights=None
+
         network, preprocess_input = Classifiers.get(params.model)
         base_model = network(input_shape=input_shp,
                              weights=weights, 
                              include_top=False)
         
-        base_model.trinable = params.treinable
+#        base_model.trainable = params.trainable
+        base_model.trainable = True
+
         
         # base_model = Model(inputs=net.input,
         #                     outputs=net.get_layer("stage3_unit1_relu1").output,
