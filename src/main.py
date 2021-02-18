@@ -21,7 +21,7 @@ import glob
 import numpy as np
 from generator import DataGenerator
 from models import cnn, Monitor, f1_mean
-from deeplab_versions import DeepLabVersions
+from deeplab_versions import DeepLabVersions, DeepLabConvLSTM
 from keras.utils import plot_model
 from keras.optimizers import SGD, Adadelta, Adagrad, Adam
 from keras.callbacks import ModelCheckpoint, EarlyStopping
@@ -136,7 +136,8 @@ if __name__ == '__main__':
 ####    args.exp_id = 'fifth_moreval'
 #    args.exp_id = 'sixth_moreval'
 #    args.exp_id = 'seventh_moreval'
-    args.exp_id = 'deeplab_rep1'
+ ##   args.exp_id = 'deeplab_rep1'
+    args.exp_id = 'deeplab_convlstm_rep1'
 
     args.dataset = 'cv'
 
@@ -370,7 +371,8 @@ if __name__ == '__main__':
                 model = cnn(img_shape=dim, nb_classes=params.classes)   
             
             else:
-                model = DeepLabVersions(dim, params)
+                # model = DeepLabVersions(dim, params)
+                model = DeepLabConvLSTM(dim, params)
             print(model.summary())
             
             ##plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)
