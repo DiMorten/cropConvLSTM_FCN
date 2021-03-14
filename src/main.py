@@ -48,6 +48,8 @@ import time, datetime
 import cv2
 colorama.init()
 from utils import cmap, plot_figures_test
+from model_input_mode import MIM, MIMTimeSequence, MIMStack
+
 def getTimeDelta(im_names):
     time_delta=[]
     for im in im_names:
@@ -122,6 +124,7 @@ parser.add_argument('--mode', default="Eval",
 
 if __name__ == '__main__':
 
+    mim = MIMTimeSequence()
     val_mode = False
     # define dataset
 #    ds = CampoVerdeSAR()
@@ -151,7 +154,7 @@ if __name__ == '__main__':
            
     # load train image
     #image = np.load(args.img_data)
-    image = im_load(args.img_data,im_names)
+    image = mim.im_load(args.img_data,im_names)
     time_delta = getTimeDelta(im_names)
     deb.prints(image.shape)
     deb.prints(time_delta)
@@ -203,7 +206,8 @@ if __name__ == '__main__':
             coords = np.where(labels!=0)
             
             if args.mode == "Train":
-                img_tmp = image[coords]
+                img_tmp = mim.getChannelwiseFlattenedSequence(image) # (h,w,c*t)
+                img_tmp = img_tmp[coords] 
                 scaler = pp.StandardScaler().fit(img_tmp)
                 img_tmp = []
                 scaler_filename = os.path.join(args.model_dir,"scaler.save")
@@ -215,10 +219,12 @@ if __name__ == '__main__':
                 scaler = joblib.load(scaler_filename)
             
             print("Scaler parameters",scaler.mean_, scaler.var_)
-        
-            image = image.reshape(row*col,bands)
+
+            image = mim.reshapeForScaler(image)
+#            image = image.reshape(row*col,bands)
             image = scaler.transform(image)
-            image = image.reshape(row,col,bands)
+            image = mim.reshapeFromScaler(image)
+#            image = image.reshape(row,col,bands)
             
             if args.mode == "Test":
 #                params.ovrl_test = 0.5
