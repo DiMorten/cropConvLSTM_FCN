@@ -65,29 +65,54 @@ def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
     conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
     classfier = Conv2D(nb_classes, 1, activation = 'softmax', name='cl_output')(conv8)
     
-    
-    # Regression branch
-#    up61 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
-#    merge61 = concatenate([drop3,up61], axis = 3)
-#    conv61 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge61)
-#    conv61 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv61)
-
-#    up71 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv61))
-#    merge71 = concatenate([conv2,up71], axis = 3)
-#    conv71 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge71)
-#    conv71 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv71)
-
-#    up81 = Conv2D(24, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv71))
-#    merge81 = concatenate([conv1,up81], axis = 3)
-#    conv81 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge81)
-#    conv81 = Conv2D(24, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv81)
-#    regresor = Conv2D(1, 1, activation = 'sigmoid', name='reg_output')(conv81)
 
 
     model = Model(inputs = inputs, outputs = [classfier])
     print(model.summary())
     return model
 
+    
+
+def cnn(pretrained_weights = None, img_shape = (14,128,128,2),nb_classes=10):
+    inputs = Input(shape=img_shape)
+    conv1 = TimeDistributed(Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(inputs)
+    conv1 = TimeDistributed(Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv1)
+    pool1 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(conv1)
+    conv2 = TimeDistributed(Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(pool1)
+    conv2 = TimeDistributed(Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv2)
+    pool2 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(conv2)
+    conv3 = TimeDistributed(Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(pool2)
+    conv3 = TimeDistributed(Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv3)
+    drop3 = Dropout(0.5)(conv3)
+    pool3 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(drop3)
+
+    conv5 = TimeDistributed(Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(pool3)
+    conv5 = TimeDistributed(Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv5)
+    drop5 = Dropout(0.5)(conv5)
+    drop5 = ConvLSTM2D(128,3,return_sequences=False,
+					padding="same")(drop5)
+    # Classification branch
+    up6 = Conv2D(256, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
+    merge6 = concatenate([drop3,up6], axis = 3)
+    conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
+    conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
+
+    up7 = Conv2D(128, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+    merge7 = concatenate([conv2,up7], axis = 3)
+    conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
+    conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
+
+    up8 = Conv2D(64, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+    merge8 = concatenate([conv1,up8], axis = 3)
+    conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
+    conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
+    classfier = Conv2D(nb_classes, 1, activation = 'softmax', name='cl_output')(conv8)
+    
+
+
+    model = Model(inputs = inputs, outputs = [classfier])
+    print(model.summary())
+    return model
 def f1_mean(y_true, y_pred):
     def recall(y_true, y_pred):
         """Recall metric.
