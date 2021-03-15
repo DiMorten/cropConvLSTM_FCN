@@ -240,9 +240,13 @@ def add_padding(img, psize, overl):
         npad_img = ((overlap//2, step_row), (overlap//2, step_col),(0,0))
     else:        
         npad_img = ((overlap//2, step_row), (overlap//2, step_col))  
-        
+
+    deb.prints(img.shape)
+    deb.prints(np.pad(img, npad_img, mode='symmetric').shape)
+
     # padd with symetric (espelhado)    
     pad_img = np.pad(img, npad_img, mode='symmetric')
+    deb.prints(pad_img.shape)
 
     # Number of patches: k1xk2
     k1, k2 = (row+step_row)//stride, (col+step_col)//stride
@@ -281,9 +285,16 @@ def seq_add_padding(img, psize, overl):
     else:        
         npad_img = ((overlap//2, step_row), (overlap//2, step_col))  
     
-    pad_img = np.zeros((t_len,row, col, bands))
+    pad_img_shape = np.pad(img[0], npad_img, mode='symmetric').shape
+    pad_img = np.zeros((t_len,) + pad_img_shape)
+    deb.prints(pad_img_shape)
+    deb.prints(pad_img.shape)
+    
     # padd with symetric (espelhado)    
-    for t_step in t_len:
+    for t_step in range(t_len):
+        deb.prints(img[t_step].shape)
+        deb.prints(np.pad(img[t_step], npad_img, mode='symmetric').shape)
+        
         pad_img[t_step] = np.pad(img[t_step], npad_img, mode='symmetric')
 
     # Number of patches: k1xk2

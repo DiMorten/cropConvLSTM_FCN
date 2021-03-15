@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class MIM():
     def im_load(self, path,im_names):
 
@@ -19,14 +22,14 @@ class MIMTimeSequence(MIM):
         return image
     def reshapeForScaler(self, image):
         image = self.getChannelwiseFlattenedSequence(image)
-        image = image.reshape(self.row*self.col,self.bands)
+        image = image.reshape(self.row*self.col,self.bands * self.t_len)
         return image
     def getChannelwiseUnflattenedSequence(self, image):
         image=np.reshape(image,(self.row,self.col,self.bands,self.t_len))
         image=np.moveaxis(image,-1,0)
         return image
     def reshapeFromScaler(self, image):
-        image = image.reshape(self.row,self.col,self.bands)
+        image = image.reshape(self.row,self.col,self.bands * self.t_len)
         image = self.getChannelwiseUnflattenedSequence(image)
         return image
 class MIMStack(MIM):
@@ -43,9 +46,9 @@ class MIMStack(MIM):
     def getChannelwiseFlattenedSequence(self, image):
         return image
     def reshapeForScaler(self, image):
-        image = image.reshape(self.row*self.col,self.bands)
+        image = image.reshape(self.row*self.col,self.bands * self.t_len)
         return image
     def reshapeFromScaler(self, image):
-        image = image.reshape(self.row,self.col,self.bands)
+        image = image.reshape(self.row,self.col,self.bands * self.t_len)
         return image
 

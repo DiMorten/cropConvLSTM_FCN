@@ -13,14 +13,14 @@ import argparse
 import logging
 import os
 import random
-from utils import load_image, metrics, add_padding
+from utils import load_image, metrics, add_padding, seq_add_padding
 from utils import set_logger, save_dict_to_json 
 from utils import Params, check_folder, Results
 from utils import extract_patches_coord
 import glob
 import numpy as np
 from generator import DataGenerator
-from models import cnn, Monitor, f1_mean
+from models import cnn, Monitor, f1_mean, UUnetConvLSTM
 from deeplab_versions import DeepLabVersions, DeepLabConvLSTM
 from keras.utils import plot_model
 from keras.optimizers import SGD, Adadelta, Adagrad, Adam
@@ -125,6 +125,8 @@ parser.add_argument('--mode', default="Eval",
 if __name__ == '__main__':
 
     mim = MIMTimeSequence()
+#    mim = MIMStack()
+
     val_mode = False
     # define dataset
 #    ds = CampoVerdeSAR()
@@ -141,6 +143,7 @@ if __name__ == '__main__':
 #    args.exp_id = 'seventh_moreval'
  ##   args.exp_id = 'deeplab_rep1'
     args.exp_id = 'deeplab_convlstm_rep1'
+    args.exp_id = 'deeplab_convlstm_mim'
 
     args.dataset = 'cv'
 
@@ -160,7 +163,11 @@ if __name__ == '__main__':
     deb.prints(time_delta)
 
     #image = np.rollaxis(image,0,3)
-    row,col,bands = image.shape
+    if type(mim) is MIMStack:
+        row,col,bands = image.shape
+    else:
+        t_len, row,col,bands = image.shape
+
     params.channels = bands
 
     # load label image for train
@@ -234,12 +241,17 @@ if __name__ == '__main__':
             #if args.plot_histogram == True:
             #    plot_histogram(image)
 
-            image_tr, stride, step_row, step_col, overlap = add_padding(image, params.patch_size, params.ovrl)
-        
+            if type(mim) is MIMStack:
+                image_tr, stride, step_row, step_col, overlap = add_padding(image, params.patch_size, params.ovrl)
+            else:
+                image_tr, stride, step_row, step_col, overlap = seq_add_padding(image, params.patch_size, params.ovrl)
+
             labels_tr, _, _, _, _ = add_padding(labels, params.patch_size, params.ovrl)
 ##            labels_val, _, _, _, _ = add_padding(labels_dev, params.patch_size, params.ovrl)
         
             # get coords
+            print(labels_tr.shape)
+#            pdb.set_trace()
             coords_tr = extract_patches_coord(labels_tr, params.patch_size, stride, train = True)
 ##            coords_val = extract_patches_coord(labels_val, params.patch_size, stride, train = False)
             deb.prints(coords_tr.shape)
@@ -373,12 +385,15 @@ if __name__ == '__main__':
             optimizer = Adam(lr=params.learning_rate)
             # Define model
             params.add_reg = False
+            '''
             if params.model == "custom":
                 model = cnn(img_shape=dim, nb_classes=params.classes)   
             
             else:
-                # model = DeepLabVersions(dim, params)
-                model = DeepLabConvLSTM(dim, params)
+                model = DeepLabVersions(dim, params)
+                #model = DeepLabConvLSTM(dim, params)
+            '''
+            model = UUnetConvLSTM(img_shape=dim, nb_classes=params.classes) 
             print(model.summary())
             
             ##plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)

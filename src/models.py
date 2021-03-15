@@ -12,7 +12,7 @@ import numpy as np
 import keras.backend as K
 import keras
 from keras.layers import Dense, Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate
-from keras.layers import AveragePooling2D, Flatten, BatchNormalization, Dropout
+from keras.layers import AveragePooling2D, Flatten, BatchNormalization, Dropout, TimeDistributed
 from keras.models import Model
 from keras.layers import ELU
 from keras import layers
@@ -73,7 +73,7 @@ def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
 
     
 
-def cnn(pretrained_weights = None, img_shape = (14,128,128,2),nb_classes=10):
+def UUnetConvLSTM(pretrained_weights = None, img_shape = (14,128,128,2),nb_classes=10):
     inputs = Input(shape=img_shape)
     conv1 = TimeDistributed(Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(inputs)
     conv1 = TimeDistributed(Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv1)
