@@ -407,7 +407,7 @@ if __name__ == '__main__':
             if params.model == "custom":
                 model = cnn(img_shape=dim, nb_classes=params.classes)   
             
-            elif params.model == 'deeplab': #resnet18
+            elif params.model == 'resnet18': #resnet18
                 model = DeepLabVersions(dim, params)
                 #model = DeepLabConvLSTM(dim, params)
             elif params.model == 'convlstm':
