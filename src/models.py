@@ -12,9 +12,9 @@ import numpy as np
 import keras.backend as K
 import keras
 from keras.layers import Dense, Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate
-from keras.layers import AveragePooling2D, Flatten, BatchNormalization, Dropout, TimeDistributed
+from keras.layers import AveragePooling2D, Flatten, BatchNormalization, Dropout, TimeDistributed, ConvLSTM2D
 from keras.models import Model
-from keras.layers import ELU
+from keras.layers import ELU, Lambda
 from keras import layers
 from keras import regularizers
 from keras.callbacks import Callback
@@ -23,8 +23,11 @@ from sklearn.metrics import classification_report
 from keras.callbacks import Callback
 from sklearn.metrics import f1_score, make_scorer, confusion_matrix, accuracy_score, precision_score, recall_score, precision_recall_curve
 from collections import Counter, OrderedDict
-from utils import plot_figures
+from utils import plot_figures, plot_figures_timedistributed
 import pdb
+from keras.regularizers import l1,l2
+from keras.layers import Input, Dense, Conv2D, MaxPool2D, Flatten, Dropout, Conv2DTranspose, AveragePooling2D, Bidirectional, Activation
+
 elu_alpha = 0.1
 
 import deb
@@ -72,7 +75,17 @@ def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
     return model
 
     
+def slice_tensor(x,output_shape):
+    deb.prints(output_shape)
+    deb.prints(K.int_shape(x))
+#				res1 = Lambda(lambda x: x[:,:,:,-1], output_shape=output_shape)(x)
+#				res2 = Lambda(lambda x: x[:,:,:,-1], output_shape=output_shape[1:])(x)
+    res2 = Lambda(lambda x: x[:,-1])(x)
 
+#				deb.prints(K.int_shape(res1))
+    deb.prints(K.int_shape(res2))
+    
+    return res2
 def UUnetConvLSTM(pretrained_weights = None, img_shape = (14,128,128,2),nb_classes=10):
     inputs = Input(shape=img_shape)
     conv1 = TimeDistributed(Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(inputs)
@@ -93,17 +106,23 @@ def UUnetConvLSTM(pretrained_weights = None, img_shape = (14,128,128,2),nb_class
 					padding="same")(drop5)
     # Classification branch
     up6 = Conv2D(256, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
+    drop3 = slice_tensor(drop3, output_shape = K.int_shape(up6))
     merge6 = concatenate([drop3,up6], axis = 3)
+    #merge6 = up6
     conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
     conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
 
     up7 = Conv2D(128, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+    conv2 = slice_tensor(conv2, output_shape = K.int_shape(up7))
     merge7 = concatenate([conv2,up7], axis = 3)
+    #merge7 = up7
     conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
     conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
 
     up8 = Conv2D(64, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+    conv1 = slice_tensor(conv1, output_shape = K.int_shape(up8))
     merge8 = concatenate([conv1,up8], axis = 3)
+    #merge8 = up8
     conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
     conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
     classfier = Conv2D(nb_classes, 1, activation = 'softmax', name='cl_output')(conv8)
@@ -111,6 +130,111 @@ def UUnetConvLSTM(pretrained_weights = None, img_shape = (14,128,128,2),nb_class
 
 
     model = Model(inputs = inputs, outputs = [classfier])
+    print(model.summary())
+    return model
+
+
+
+weight_decay=1E-4
+def dilated_layer(x,filter_size,dilation_rate=1, kernel_size=3):
+    x = TimeDistributed(Conv2D(filter_size, kernel_size, padding='same',
+        dilation_rate=(dilation_rate, dilation_rate)))(x)
+    x = BatchNormalization(gamma_regularizer=l2(weight_decay),
+                        beta_regularizer=l2(weight_decay))(x)
+    x = Activation('relu')(x)
+    return x
+def transpose_layer(x,filter_size,dilation_rate=1,
+    kernel_size=3, strides=(2,2)):
+    x = Conv2DTranspose(filter_size, 
+        kernel_size, strides=strides, padding='same')(x)
+    x = BatchNormalization(gamma_regularizer=l2(weight_decay),
+                                        beta_regularizer=l2(weight_decay))(x)
+    x = Activation('relu')(x)
+    return x
+def dilated_layer_Nto1(x,filter_size,dilation_rate=1, kernel_size=3):
+    x = Conv2D(filter_size, kernel_size, padding='same',
+        dilation_rate=(dilation_rate, dilation_rate))(x)
+    x = BatchNormalization(gamma_regularizer=l2(weight_decay),
+                        beta_regularizer=l2(weight_decay))(x)
+    x = Activation('relu')(x)
+    return x
+
+def BUnet4ConvLSTM(img_shape = (14,128,128,2),class_n=10):
+    in_im = Input(shape=img_shape)
+
+    concat_axis = 3
+
+    #fs=32
+    fs=16
+
+    p1=dilated_layer(in_im,fs)			
+    p1=dilated_layer(p1,fs)
+    e1 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p1)
+    p2=dilated_layer(e1,fs*2)
+    e2 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p2)
+    p3=dilated_layer(e2,fs*4)
+    e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
+
+    x = Bidirectional(ConvLSTM2D(128,3,return_sequences=False,
+            padding="same"),merge_mode='concat')(e3)
+
+    d3 = transpose_layer(x,fs*4)
+    d3 = keras.layers.concatenate([d3, p3], axis=-1)
+    d3=dilated_layer_Nto1(d3,fs*4)
+    d2 = transpose_layer(d3,fs*2)
+    d2 = keras.layers.concatenate([d2, p2], axis=-1)
+    d2=dilated_layer_Nto1(d2,fs*2)
+    d1 = transpose_layer(d2,fs)
+    d1 = keras.layers.concatenate([d1, p1], axis=-1)
+    out=dilated_layer_Nto1(d1,fs)
+    out = Conv2D(class_n, (1, 1), activation=None,
+                                padding='same', name='cl_output')(out)
+    model = Model(in_im, out)
+    print(model.summary())
+    return model
+
+def UUnet4ConvLSTM(img_shape = (14,128,128,2),class_n=10):
+    in_im = Input(shape=img_shape)
+    concat_axis = 3
+
+    #fs=32
+    fs=16
+
+    p1=dilated_layer(in_im,fs)			
+    p1=dilated_layer(p1,fs)
+    e1 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p1)
+    p2=dilated_layer(e1,fs*2)
+    e2 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p2)
+    p3=dilated_layer(e2,fs*4)
+    e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
+
+    x = ConvLSTM2D(256,3,return_sequences=False,
+            padding="same")(e3)
+
+    d3 = transpose_layer(x,fs*4)
+    p3 = slice_tensor(p3, output_shape = K.int_shape(d3))
+    deb.prints(K.int_shape(p3))
+    deb.prints(K.int_shape(d3))
+    
+    d3 = keras.layers.concatenate([d3, p3], axis=-1)
+    d3=dilated_layer_Nto1(d3,fs*4)
+    d2 = transpose_layer(d3,fs*2)
+    p2 = slice_tensor(p2, output_shape = K.int_shape(d2))
+    deb.prints(K.int_shape(p2))
+    deb.prints(K.int_shape(d2))
+
+    d2 = keras.layers.concatenate([d2, p2], axis=-1)
+    d2=dilated_layer_Nto1(d2,fs*2)
+    d1 = transpose_layer(d2,fs)
+    p1 = slice_tensor(p1, output_shape = K.int_shape(d1))
+    deb.prints(K.int_shape(p1))
+    deb.prints(K.int_shape(d1))
+
+    d1 = keras.layers.concatenate([d1, p1], axis=-1)
+    out=dilated_layer_Nto1(d1,fs)
+    out = Conv2D(class_n, (1, 1), activation=None,
+                                padding='same', name='cl_output')(out)
+    model = Model(in_im, out)
     print(model.summary())
     return model
 def f1_mean(y_true, y_pred):
@@ -188,9 +312,13 @@ class Monitor(Callback):
             # val_depth = val_pred[1]
             val_predict = np.argmax(val_prob,axis=-1)
             if batch_index == 0:
-                plot_figures(self.validation[batch_index][0],val_targ,val_predict,
+                #plot_figures(self.validation[batch_index][0],val_targ,val_predict,
+                #             val_prob,self.model_dir,epoch, 
+                #             self.classes,'val')
+                plot_figures_timedistributed(self.validation[batch_index][0],val_targ,val_predict,
                              val_prob,self.model_dir,epoch, 
                              self.classes,'val')
+                
             val_targ = np.squeeze(val_targ)
             val_predict = val_predict[val_targ<self.classes]
             val_targ = val_targ[val_targ<self.classes]

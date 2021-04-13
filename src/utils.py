@@ -607,8 +607,146 @@ def plot_figures(img,cl,pred,prob,model_dir,epoch, nb_classes,set_name):
     plt.clf()
     plt.close()
 
+def plot_figures_timedistributed(img,cl,pred,prob,model_dir,epoch, nb_classes,set_name):
 
+    '''
+        img: input
+        cl: val label
+        pred: val predict
+        prob: val prob
+
+        
+    '''
+    batch = 8 # columns 8
+#    nrows = 6
+    nrows = 4
+
+    img = img[:8,-1,:,:,0]
+    cl = cl[:8,:,:]
+    pred = pred[:8,:,:]
+    prob = np.amax(prob[:8,:,:],axis=-1)
+#        pred_d = pred_d[:8,:,:,0]
+#        d_map = d_map[:8,:,:,0]
+                        
+    fig, axes = plt.subplots(nrows=nrows, ncols=batch, figsize=(9, 6))
+    
+#    imgs = [img,cl,pred,prob,d_map,pred_d]
+    imgs = [img,cl,pred,prob]
+     
+    cont = 0
+    cont_img = 0
+    cont_bacth = 0
+    print("dtype img,cl,pred,prob", img.dtype,cl.dtype,pred.dtype,prob.dtype)
+    print("shape img,cl,pred,prob", img.shape,cl.shape,pred.shape,prob.shape)
+
+    for ax in axes.flat:
+        ax.set_axis_off()
+        if cont_img < batch:
+            im = ax.imshow(imgs[cont][cont_bacth], cmap = 'gray')
+        elif cont_img >= batch and cont_img < 3*batch:
+            im = ax.imshow(imgs[cont][cont_bacth], cmap=cmap,vmin=0, vmax=nb_classes)
+        elif cont_img >= 3*batch and cont_img < 4*batch:
+            im = ax.imshow(imgs[cont][cont_bacth], cmap='OrRd', interpolation='nearest')
+        elif cont_img >= 4*batch:
+            im = ax.imshow(imgs[cont][cont_bacth], cmap='winter', interpolation='nearest')
+
+        cont_img+=1
+        cont_bacth+=1
+        if cont_img%batch==0:
+            cont+=1
+            cont_bacth=0
+
+    
+    fig.subplots_adjust(bottom=0.1, top=0.9, left=0.1, right=0.8,
+                        wspace=0.02, hspace=0.02)
+    
+    # add an axes, lower left corner in [0.83, 0.1] measured in figure coordinate with axes width 0.02 and height 0.8
+    # cb_ax = fig.add_axes([0.83, 0.1, 0.02, 0.8])
+    # cbar = fig.colorbar(im, cax=cb_ax)
+    
+    # set the colorbar ticks and tick labels
+    # cbar.set_ticks(np.arange(0, 1, nb_classes))
+    
+    plt.axis('off')
+    plt.savefig(os.path.join(model_dir, set_name + str(epoch) + '.png'), dpi = 300, format='png', bbox_inches = 'tight')
+    plt.clf()
+    plt.close()
 def plot_figures_test(img,cl,pred,prob,model_dir,nb_classes,set_name):
+
+    '''
+        img: input
+        cl: val label
+        pred: val predict
+        prob: val prob
+
+        
+    '''
+    print("shape img,cl,pred,prob",img.shape, cl.shape, pred.shape, prob.shape)
+
+    batch = 1 # columns 8
+#    nrows = 6
+    nrows = 4
+    deb.prints(img.shape)
+#    pdb.set_trace()
+    img = img[0,-1,:,:,0]
+    #cl = cl[0,:,:]
+    pred = pred[0,:,:]
+    prob = np.amax(prob[0,:,:],axis=-1)
+    deb.prints(img.shape)
+    #pdb.set_trace()
+#    print("dtype img,cl,pred,prob",img.dtype, cl.dtype, pred.dtype, prob.dtype) #float16, 
+
+#        pred_d = pred_d[:8,:,:,0]
+#        d_map = d_map[:8,:,:,0]
+                        
+    fig, axes = plt.subplots(nrows=nrows, ncols=batch, figsize=(9, 6))
+    
+#    imgs = [img,cl,pred,prob,d_map,pred_d]
+    imgs = [img,cl,pred,prob]
+     
+    cont = 0
+    cont_img = 0
+    cont_bacth = 0
+    print("dtype img,cl,pred,prob", img.dtype,cl.dtype,pred.dtype,prob.dtype)
+    print("shape img,cl,pred,prob", img.shape,cl.shape,pred.shape,prob.shape)
+
+    for ax in axes.flat:
+        ax.set_axis_off()
+        if cont_img == 0:
+            im = ax.imshow(imgs[cont_img], cmap = 'gray')
+        elif cont_img == 1 or cont_img == 2:
+            im = ax.imshow(imgs[cont_img], cmap=cmap,vmin=0, vmax=nb_classes)
+        elif cont_img == 3:
+            im = ax.imshow(imgs[cont_img], cmap='OrRd', interpolation='nearest')
+#        elif cont_img == 3:
+#            im = ax.imshow(imgs[cont_img], cmap='winter', interpolation='nearest')
+
+        cont_img+=1
+        cont_bacth+=1
+        
+        #if cont_img%batch==0:
+        #    cont+=1
+        #    cont_bacth=0
+    #pdb.set_trace()
+    
+    #fig.subplots_adjust(bottom=0.1, top=0.9, left=0.1, right=0.8,
+    #                    wspace=0.02, hspace=0.02)
+    
+    # add an axes, lower left corner in [0.83, 0.1] measured in figure coordinate with axes width 0.02 and height 0.8
+    # cb_ax = fig.add_axes([0.83, 0.1, 0.02, 0.8])
+    # cbar = fig.colorbar(im, cax=cb_ax)
+    
+    # set the colorbar ticks and tick labels
+    # cbar.set_ticks(np.arange(0, 1, nb_classes))
+    plt.show()
+    
+#    plt.axis('off')
+#    plt.savefig(os.path.join(model_dir, set_name + '.png'), dpi = 300, format='png', bbox_inches = 'tight')
+    plt.clf()
+    plt.close()
+
+
+def plot_figures_test_timedistributed(img,cl,pred,prob,model_dir,nb_classes,set_name):
 
     '''
         img: input

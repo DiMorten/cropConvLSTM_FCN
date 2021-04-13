@@ -20,7 +20,8 @@ from utils import extract_patches_coord
 import glob
 import numpy as np
 from generator import DataGenerator
-from models import cnn, Monitor, f1_mean, UUnetConvLSTM
+from timedistributed_generator import TimeDistributedDataGenerator
+from models import cnn, Monitor, f1_mean, UUnetConvLSTM, BUnet4ConvLSTM, UUnet4ConvLSTM
 from deeplab_versions import DeepLabVersions, DeepLabConvLSTM
 from keras.utils import plot_model
 from keras.optimizers import SGD, Adadelta, Adagrad, Adam
@@ -141,9 +142,12 @@ if __name__ == '__main__':
 ####    args.exp_id = 'fifth_moreval'
 #    args.exp_id = 'sixth_moreval'
 #    args.exp_id = 'seventh_moreval'
- ##   args.exp_id = 'deeplab_rep1'
-    args.exp_id = 'deeplab_convlstm_rep1'
-    args.exp_id = 'deeplab_convlstm_mim'
+#    args.exp_id = 'deeplab_rep1' # stack
+    args.exp_id = 'deeplab_colab' # stack
+
+#    args.exp_id = 'deeplab_convlstm_rep1' 
+#    args.exp_id = 'deeplab_convlstm_mim' # timsequence
+#    args.exp_id = 'bunet4convlstm_timedistributed' # stack
 
     args.dataset = 'cv'
 
@@ -365,17 +369,31 @@ if __name__ == '__main__':
             index_val = np.array(range(len(coords_val[0])))
 
             # Define generators
-            dim = (params.patch_size, params.patch_size, params.channels)
-
-            training_generator = DataGenerator(image_tr, labels_tr, coords_tr, index_tr, params.channels, 
-                                               params.patch_size, params.batch_size, dim,  
-                                               samp_per_epoch= params.samp_per_epoch, shuffle=True,  #samp_per_epoch= 1965
-                                               use_augm = params.use_augm)
-##samp_per_epoch= params.samp_per_epoch
-
-            validation_generator = DataGenerator(image_tr, labels_tr, coords_val, index_val, params.channels, 
-                                                 params.patch_size, params.batch_size, dim,  shuffle=True)
+            print("=================== defining generators")
             
+            if type(mim) is MIMStack:
+                dim = (params.patch_size, params.patch_size, params.channels)
+                deb.prints(dim)
+                training_generator = DataGenerator(image_tr, labels_tr, coords_tr, index_tr, params.channels, 
+                                                params.patch_size, params.batch_size, dim,  
+                                                samp_per_epoch= params.samp_per_epoch, shuffle=True,  #samp_per_epoch= 1965
+                                                use_augm = params.use_augm)
+    ##samp_per_epoch= params.samp_per_epoch
+
+                validation_generator = DataGenerator(image_tr, labels_tr, coords_val, index_val, params.channels, 
+                                                    params.patch_size, params.batch_size, dim,  shuffle=True)
+            else:
+                dim = (t_len, params.patch_size, params.patch_size, params.channels)
+                deb.prints(dim)
+                training_generator = TimeDistributedDataGenerator(image_tr, labels_tr, coords_tr, index_tr, params.channels, 
+                                                params.patch_size, params.batch_size, dim,  
+                                                samp_per_epoch= params.samp_per_epoch, shuffle=True,  #samp_per_epoch= 1965
+                                                use_augm = params.use_augm)
+    ##samp_per_epoch= params.samp_per_epoch
+
+                validation_generator = TimeDistributedDataGenerator(image_tr, labels_tr, coords_val, index_val, params.channels, 
+                                                    params.patch_size, params.batch_size, dim,  shuffle=True)
+
             # validation_generator = DataGenerator(image_tr, labels_val, coords_val, index_val, params.channels, 
             #                                      params.patch_size, params.batch_size, dim,
             #                                      samp_per_epoch = params.samp_epoch_val, shuffle=True, 
@@ -385,15 +403,18 @@ if __name__ == '__main__':
             optimizer = Adam(lr=params.learning_rate)
             # Define model
             params.add_reg = False
-            '''
+            
             if params.model == "custom":
                 model = cnn(img_shape=dim, nb_classes=params.classes)   
             
-            else:
+            elif params.model == 'deeplab': #resnet18
                 model = DeepLabVersions(dim, params)
                 #model = DeepLabConvLSTM(dim, params)
-            '''
-            model = UUnetConvLSTM(img_shape=dim, nb_classes=params.classes) 
+            elif params.model == 'convlstm':
+                #model = UUnetConvLSTM(img_shape=dim, nb_classes=params.classes) 
+                #model = BUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
+                model = UUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
+                
             print(model.summary())
             
             ##plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)
@@ -458,8 +479,10 @@ if __name__ == '__main__':
                                                               #"f_reg": masked_mse(),
                                                               "f_acc": accuracy_mask(),
                                                               "tf": tf})
-             
-                row,col,bands = image_tr.shape
+                if type(mim) is MIMStack:                
+                    row,col,bands = image_tr.shape
+                else:
+                    t_step, row,col,bands = image_tr.shape
                 cl_img = np.zeros((row,col,params.classes))
                 #cl_img = cl_img.astype('float16')
                 #reg_img = np.zeros((row,col))
@@ -468,9 +491,14 @@ if __name__ == '__main__':
                 
                 for m in range(params.patch_size//2,row-params.patch_size//2,stride): 
                     for n in range(params.patch_size//2,col-params.patch_size//2,stride):
-                        patch = image_tr[m-params.patch_size//2:m+params.patch_size//2 + params.patch_size%2,
-                                  n-params.patch_size//2:n+params.patch_size//2 + params.patch_size%2]
-                        patch = patch.reshape((1,params.patch_size,params.patch_size,bands))
+                        if type(mim) is MIMStack:
+                            patch = image_tr[m-params.patch_size//2:m+params.patch_size//2 + params.patch_size%2,
+                                    n-params.patch_size//2:n+params.patch_size//2 + params.patch_size%2]
+                            patch = patch.reshape((1,params.patch_size,params.patch_size,bands))
+                        else:
+                            patch = image_tr[:, m-params.patch_size//2:m+params.patch_size//2 + params.patch_size%2,
+                                    n-params.patch_size//2:n+params.patch_size//2 + params.patch_size%2]
+                            patch = patch.reshape((1,t_step, params.patch_size,params.patch_size,bands))                                                      
                         pred_cl = model.predict(patch)
                         _, x, y, c = pred_cl.shape
 
@@ -487,7 +515,11 @@ if __name__ == '__main__':
                             #deb.prints(class_n)
                             #deb.prints(np.average(label_patch))
                             if np.average(label_patch)!=class_n:
-                                plot_figures_test(patch.astype(np.float32), label_patch, pred_int, pred_cl, model_k, 9, 'test')
+                                if type(mim) is MIMStack:
+                                    plot_figures_test(patch.astype(np.float32), label_patch, pred_int, pred_cl, model_k, 9, 'test')
+                                else:
+                                    plot_figures_test_timedistributed(patch.astype(np.float32), label_patch, pred_int, pred_cl, model_k, 9, 'test')
+
                         #pdb.set_trace()
                         cl_img[m-stride//2:m+stride//2,n-stride//2:n+stride//2,:] = pred_cl[0,overlap//2:x-overlap//2,overlap//2:y-overlap//2,:]
                         #reg_img[m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_reg[0,overlap//2:x-overlap//2,overlap//2:y-overlap//2,0]
