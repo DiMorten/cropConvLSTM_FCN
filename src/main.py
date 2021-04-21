@@ -125,8 +125,8 @@ parser.add_argument('--mode', default="Eval",
 
 if __name__ == '__main__':
 
-    mim = MIMTimeSequence()
-#    mim = MIMStack()
+#    mim = MIMTimeSequence()
+    mim = MIMStack()
 
     val_mode = False
     # define dataset
