@@ -256,7 +256,12 @@ if __name__ == '__main__':
             # get coords
             print(labels_tr.shape)
 #            pdb.set_trace()
-            coords_tr = extract_patches_coord(labels_tr, params.patch_size, stride, train = True)
+            if params.extractCoords == True: 
+                coords_tr = extract_patches_coord(labels_tr, params.patch_size, stride, train = True)
+                np.save("coords_tr_"+str(stride)+".npy",coords_tr)
+            else:
+                coords_tr = np.load("coords_tr_"+str(stride)+".npy")
+            pdb.set_trace()
 ##            coords_val = extract_patches_coord(labels_val, params.patch_size, stride, train = False)
             deb.prints(coords_tr.shape)
             coords_tr_idx = range(coords_tr.shape[0])

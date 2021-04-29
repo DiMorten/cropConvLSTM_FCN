@@ -6,6 +6,7 @@
     "patch_size": 128, 
     "samp_per_epoch": 3000,
     "ovrl":0.98,
-
+    "extractCoords": false,
     "model":"convlstm"
+
 }
