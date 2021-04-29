@@ -11,7 +11,7 @@ from time import time
 import numpy as np
 import keras.backend as K
 import keras
-from keras.layers import Dense, Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate
+from keras.layers import Dense, Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate, Conv3D, Conv3DTranspose, AveragePooling3D
 from keras.layers import AveragePooling2D, Flatten, BatchNormalization, Dropout, TimeDistributed, ConvLSTM2D
 from keras.models import Model
 from keras.layers import ELU, Lambda
@@ -237,6 +237,100 @@ def UUnet4ConvLSTM(img_shape = (14,128,128,2),class_n=10):
     model = Model(in_im, out)
     print(model.summary())
     return model
+
+
+def dilated_layer_3D(x,filter_size,dilation_rate=1, kernel_size=3):
+    if isinstance(dilation_rate, int):
+        dilation_rate = (dilation_rate, dilation_rate, dilation_rate)
+    x = Conv3D(filter_size, kernel_size, padding='same',
+        dilation_rate=dilation_rate)(x)
+    x = BatchNormalization(gamma_regularizer=l2(weight_decay),
+                        beta_regularizer=l2(weight_decay))(x)
+    x = Activation('relu')(x)
+    return x
+
+
+def transpose_layer_3D(x,filter_size,dilation_rate=1,
+    kernel_size=3, strides=(1,2,2)):
+    x = Conv3DTranspose(filter_size,
+        kernel_size, strides=strides, padding='same')(x)
+    x = BatchNormalization(gamma_regularizer=l2(weight_decay),
+                                        beta_regularizer=l2(weight_decay))(x)
+    x = Activation('relu')(x)
+    return x	
+
+def UUnet3DConvLSTM(img_shape = (14,128,128,2),class_n=10):
+    in_im = Input(shape=img_shape)
+    concat_axis = 3
+
+    #fs=32
+    fs=16
+
+
+    p1=dilated_layer_3D(in_im,fs,kernel_size=(7,3,3))
+    e1 = AveragePooling3D((1, 2, 2), strides=(1, 2, 2))(p1)
+    p2=dilated_layer_3D(e1,fs*2,kernel_size=(7,3,3))
+    e2 = AveragePooling3D((1, 2, 2), strides=(1, 2, 2))(p2)
+    p3=dilated_layer_3D(e2,fs*4,kernel_size=(7,3,3))
+    e3 = AveragePooling3D((1, 2, 2), strides=(1, 2, 2))(p3)
+
+    x = ConvLSTM2D(256,3,return_sequences=False,
+            padding="same")(e3)
+
+    d3 = transpose_layer(x,fs*4)
+    p3 = slice_tensor(p3, output_shape = K.int_shape(d3))
+    deb.prints(K.int_shape(p3))
+    deb.prints(K.int_shape(d3))
+    
+    d3 = keras.layers.concatenate([d3, p3], axis=-1)
+    d3=dilated_layer_Nto1(d3,fs*4)
+    d2 = transpose_layer(d3,fs*2)
+    p2 = slice_tensor(p2, output_shape = K.int_shape(d2))
+    deb.prints(K.int_shape(p2))
+    deb.prints(K.int_shape(d2))
+
+    d2 = keras.layers.concatenate([d2, p2], axis=-1)
+    d2=dilated_layer_Nto1(d2,fs*2)
+    d1 = transpose_layer(d2,fs)
+    p1 = slice_tensor(p1, output_shape = K.int_shape(d1))
+    deb.prints(K.int_shape(p1))
+    deb.prints(K.int_shape(d1))
+
+    d1 = keras.layers.concatenate([d1, p1], axis=-1)
+    out=dilated_layer_Nto1(d1,fs)
+    out = Conv2D(class_n, (1, 1), activation=None,
+                                padding='same', name='cl_output')(out)
+    model = Model(in_im, out)
+    print(model.summary())
+    return model
+def Unet3D(img_shape = (14,128,128,2),class_n=10):
+    in_im = Input(shape=img_shape)
+
+    #fs=32
+    fs=16
+
+    p1=dilated_layer_3D(in_im,fs,kernel_size=(7,3,3))
+    e1 = AveragePooling3D((1, 2, 2), strides=(1, 2, 2))(p1)
+    p2=dilated_layer_3D(e1,fs*2,kernel_size=(7,3,3))
+    e2 = AveragePooling3D((1, 2, 2), strides=(1, 2, 2))(p2)
+    p3=dilated_layer_3D(e2,fs*4,kernel_size=(7,3,3))
+    e3 = AveragePooling3D((1, 2, 2), strides=(1, 2, 2))(p3)
+
+    d3 = transpose_layer_3D(e3,fs*4)
+    d3 = keras.layers.concatenate([d3, p3], axis=4)
+    d3 = dilated_layer_3D(d3,fs*4,kernel_size=(7,3,3))
+    d2 = transpose_layer_3D(d3,fs*2)
+    d2 = keras.layers.concatenate([d2, p2], axis=4)
+    d2 = dilated_layer_3D(d2,fs*2,kernel_size=(7,3,3))
+    d1 = transpose_layer_3D(d2,fs)
+    d1 = keras.layers.concatenate([d1, p1], axis=4)
+    out = dilated_layer_3D(d1,fs,kernel_size=(7,3,3))
+    out = Conv3D(self.class_n, (1, 1, 1), activation=None,
+                                padding='same')(out)
+    self.graph = Model(in_im, out)
+    print(self.graph.summary())
+
+
 def f1_mean(y_true, y_pred):
     def recall(y_true, y_pred):
         """Recall metric.

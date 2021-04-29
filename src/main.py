@@ -21,7 +21,7 @@ import glob
 import numpy as np
 from generator import DataGenerator
 from timedistributed_generator import TimeDistributedDataGenerator
-from models import cnn, Monitor, f1_mean, UUnetConvLSTM, BUnet4ConvLSTM, UUnet4ConvLSTM
+from models import cnn, Monitor, f1_mean, UUnetConvLSTM, BUnet4ConvLSTM, UUnet4ConvLSTM, UUnet3DConvLSTM
 from deeplab_versions import DeepLabVersions, DeepLabConvLSTM
 from keras.utils import plot_model
 from keras.optimizers import SGD, Adadelta, Adagrad, Adam
@@ -125,8 +125,8 @@ parser.add_argument('--mode', default="Eval",
 
 if __name__ == '__main__':
 
-#    mim = MIMTimeSequence()
-    mim = MIMStack()
+    mim = MIMTimeSequence()
+#    mim = MIMStack()
 
     val_mode = False
     # define dataset
@@ -413,7 +413,9 @@ if __name__ == '__main__':
             elif params.model == 'convlstm':
                 #model = UUnetConvLSTM(img_shape=dim, nb_classes=params.classes) 
                 #model = BUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
-                model = UUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
+                #model = UUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
+                model = UUnet3DConvLSTM(img_shape=dim, class_n=params.classes) 
+
                 
             print(model.summary())
             
