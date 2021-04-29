@@ -5,6 +5,6 @@
     "use_augm": true,
     "patch_size": 128, 
     "samp_per_epoch": 3000,
-    "ovrl":0.5,
+    "ovrl":0.98,
     "model":"custom"
 }
