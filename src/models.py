@@ -409,10 +409,10 @@ class Monitor(Callback):
                 #plot_figures(self.validation[batch_index][0],val_targ,val_predict,
                 #             val_prob,self.model_dir,epoch, 
                 #             self.classes,'val')
-                plot_figures_timedistributed(self.validation[batch_index][0],val_targ,val_predict,
-                             val_prob,self.model_dir,epoch, 
-                             self.classes,'val')
-                
+                #plot_figures_timedistributed(self.validation[batch_index][0],val_targ,val_predict,
+                #             val_prob,self.model_dir,epoch, 
+                #             self.classes,'val')
+                pass
             val_targ = np.squeeze(val_targ)
             val_predict = val_predict[val_targ<self.classes]
             val_targ = val_targ[val_targ<self.classes]
