@@ -35,37 +35,39 @@ import deb
 
 
 def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
+    img_shape = (32,32,2)
     inputs = Input(shape=img_shape)
-    conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
-    conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
+    fs = 16
+    conv1 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
+    conv1 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
-    conv2 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool1)
-    conv2 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv2)
+    conv2 = Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool1)
+    conv2 = Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv2)
     pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
-    conv3 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool2)
-    conv3 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv3)
-    drop3 = Dropout(0.5)(conv3)
-    pool3 = MaxPooling2D(pool_size=(2, 2))(drop3)
+    conv3 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool2)
+    conv3 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv3)
+#    drop3 = Dropout(0.5)(conv3)
+    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
 
-    conv5 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool3)
-    conv5 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv5)
-    drop5 = Dropout(0.5)(conv5)
+    conv5 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool3)
+    conv5 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv5)
+#    drop5 = Dropout(0.5)(conv5)
     
     # Classification branch
-    up6 = Conv2D(256, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
-    merge6 = concatenate([drop3,up6], axis = 3)
-    conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
-    conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
+    up6 = Conv2D(fs*4, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv5))
+    merge6 = concatenate([conv3,up6], axis = 3)
+    conv6 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
+    conv6 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
 
-    up7 = Conv2D(128, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+    up7 = Conv2D(fs*2, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
     merge7 = concatenate([conv2,up7], axis = 3)
-    conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
-    conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
+    conv7 = Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
+    conv7 = Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
 
-    up8 = Conv2D(64, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+    up8 = Conv2D(fs, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
     merge8 = concatenate([conv1,up8], axis = 3)
-    conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
-    conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
+    conv8 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
+    conv8 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
     classfier = Conv2D(nb_classes, 1, activation = 'softmax', name='cl_output')(conv8)
     
 
@@ -193,6 +195,23 @@ def BUnet4ConvLSTM(img_shape = (14,128,128,2),class_n=10):
     print(model.summary())
     return model
 
+def simplefcn(img_shape = (128,128,25),class_n=10):
+    in_im = Input(shape=img_shape)
+    x = Conv2D(30, 3, padding='same')(in_im)
+    out = Conv2D(class_n, (1, 1), activation=None,
+                                padding='same', name='cl_output')(x)
+    model = Model(in_im, out)
+    print(model.summary())
+    return model
+
+def simplefcn_t(img_shape = (14,128,128,2),class_n=10):
+    in_im = Input(shape=img_shape[1:])
+    x = Conv2D(30, 3, padding='same')(in_im)
+    out = Conv2D(class_n, (1, 1), activation=None,
+                                padding='same', name='cl_output')(x)
+    model = Model(in_im, out)
+    print(model.summary())
+    return model
 def UUnet4ConvLSTM(img_shape = (14,128,128,2),class_n=10):
     in_im = Input(shape=img_shape)
     concat_axis = 3
@@ -410,9 +429,9 @@ class Monitor(Callback):
                 #plot_figures(self.validation[batch_index][0],val_targ,val_predict,
                 #             val_prob,self.model_dir,epoch, 
                 #             self.classes,'val')
-                plot_figures_timedistributed(self.validation[batch_index][0],val_targ,val_predict,
-                             val_prob,self.model_dir,epoch, 
-                             self.classes,'val')
+                #plot_figures_timedistributed(self.validation[batch_index][0],val_targ,val_predict,
+                #             val_prob,self.model_dir,epoch, 
+                #             self.classes,'val')
                 pass
             val_targ = np.squeeze(val_targ)
             val_predict = val_predict[val_targ<self.classes]

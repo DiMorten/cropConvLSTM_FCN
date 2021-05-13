@@ -7,8 +7,8 @@
     "samp_per_epoch": 3000,
     "ovrl":0.5,
     "extractCoords": false,
-    "model":"convlstm",
+    "model":"cnn",
     "scale":false,
-    "timeStack": true
+    "timeDistributed": true
 
 }

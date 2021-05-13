@@ -58,6 +58,7 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
         self.use_augm = use_augm
         self.samp_per_epoch = samp_per_epoch
         self.on_epoch_end()
+        self.single_image_test = True
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -99,7 +100,11 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
         'Generates data containing batch_size samples' # X : (n_samples, *dim)
         # Initialization
 
-        X = np.empty((self.batch_size, *self.dim))
+        if self.single_image_test == True:
+            X = np.empty((self.batch_size, *self.dim[1:])) # to use non temporal input
+        else:
+            X = np.empty((self.batch_size, *self.dim))
+
         ##ic(X.shape)
 #        X = np.empty((self.batch_size, self.patch_size,self.patch_size), dtype=np.uint8)
 
@@ -163,12 +168,17 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
                     patch_tmp = np.rot90(patch_tmp,3,(1,2))
                     lab_tmp = np.rot90(lab_tmp,3,(0,1))
                     #depth_tmp = np.rot90(depth_tmp,3,(0,1))
-                 
-                
-            X[i,] = patch_tmp
+
+            if self.single_image_test == True:                
+                X[i,] = patch_tmp[-1] # (t_len, h, w, channels)
+
+            else:
+                X[i,] = patch_tmp # (t_len, h, w, channels)
             X[i, ...,0] = lab_tmp.copy()
             X[i, ...,-1] = lab_tmp.copy()
+ #           ic(X[i,].shape)
 
+#            ic(np.unique(X[i,],return_counts = True))
             Y[i,] = lab_tmp
             #D[i,:,:,0] = depth_tmp
         #deb.prints(Y.shape)

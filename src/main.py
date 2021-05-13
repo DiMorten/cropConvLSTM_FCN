@@ -21,7 +21,7 @@ import glob
 import numpy as np
 from generator import DataGenerator
 from timedistributed_generator import TimeDistributedDataGenerator
-from models import cnn, Monitor, f1_mean, UUnetConvLSTM, BUnet4ConvLSTM, UUnet4ConvLSTM, UUnet3DConvLSTM
+from models import cnn, Monitor, f1_mean, UUnetConvLSTM, BUnet4ConvLSTM, UUnet4ConvLSTM, UUnet3DConvLSTM, simplefcn_t, simplefcn
 from deeplab_versions import DeepLabVersions, DeepLabConvLSTM
 from keras.utils import plot_model
 from keras.optimizers import SGD, Adadelta, Adagrad, Adam
@@ -175,7 +175,7 @@ if __name__ == '__main__':
         json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
-    if params.timeStack == True:
+    if params.timeDistributed == True:
         mim = MIMTimeSequence()
     else:
         mim = MIMStack()
@@ -201,7 +201,8 @@ if __name__ == '__main__':
 
     ic(image.shape)
     if type(mim) is MIMStack:
-        plot_input(image,mask,time_delta)
+        #plot_input(image,mask,time_delta)
+        pass
     else:
         #time_distributed_plot_input(image,mask,time_delta)
         pass
@@ -435,7 +436,7 @@ if __name__ == '__main__':
             # Define model
             params.add_reg = False
             
-            if params.model == "custom":
+            if params.model == "cnn":
                 model = cnn(img_shape=dim, nb_classes=params.classes)   
             
             elif params.model == 'resnet18': #resnet18
@@ -446,6 +447,13 @@ if __name__ == '__main__':
                 #model = BUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
                 model = UUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
 #                model = UUnet3DConvLSTM(img_shape=dim, class_n=params.classes) 
+            elif params.model == 'simplefcn_t':
+                #model = UUnetConvLSTM(img_shape=dim, nb_classes=params.classes) 
+                #model = BUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
+                model = simplefcn_t(img_shape=dim, class_n=params.classes) 
+#                model = UUnet3DConvLSTM(img_shape=dim, class_n=params.classes) 
+            elif params.model == 'simplefcn':
+                model = simplefcn(img_shape=dim, class_n=params.classes) 
 
                 
             print(model.summary())
@@ -454,6 +462,7 @@ if __name__ == '__main__':
             
             cl_ind = [x for x in range(params.classes)]
             losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind)}
+            
             #losses = {"cl_output": categorical_focal_ignoring_last_label(alpha=0.25,gamma=2)}
             
             

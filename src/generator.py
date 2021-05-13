@@ -13,6 +13,7 @@ from tensorflow.python.keras.utils.data_utils import Sequence
 import deb
 import pdb
 import cv2
+from icecream import ic
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 
 class DataGenerator(keras.utils.Sequence):
@@ -57,6 +58,7 @@ class DataGenerator(keras.utils.Sequence):
         self.use_augm = use_augm
         self.samp_per_epoch = samp_per_epoch
         self.on_epoch_end()
+        self.single_image_test = True
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -97,8 +99,10 @@ class DataGenerator(keras.utils.Sequence):
     def __data_generation(self, idx_tmp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim)
         # Initialization
-
-        X = np.empty((self.batch_size, *self.dim))
+        if self.single_image_test == True:
+            X = np.empty((self.batch_size, *self.dim[:-1], 2))
+        else:
+            X = np.empty((self.batch_size, *self.dim))
         Y = np.empty((self.batch_size, self.patch_size,self.patch_size), dtype=np.uint8)
         #D = np.empty((self.batch_size, self.patch_size,self.patch_size,1), dtype=np.float32)
 
@@ -158,9 +162,16 @@ class DataGenerator(keras.utils.Sequence):
                     lab_tmp = np.rot90(lab_tmp,3,(0,1))
                     #depth_tmp = np.rot90(depth_tmp,3,(0,1))
                  
-                
-            X[i,] = patch_tmp
+            if self.single_image_test == True:                
+                X[i,] = patch_tmp[..., -2:] # (t_len, h, w, channels)
+            else:
+                X[i,] = patch_tmp # (t_len, h, w, channels)    
+
+#            X[i,] = patch_tmp
+#            ic(X[i,].shape)
             X[i,...,-1] = lab_tmp.copy() # see if metrics get higher
+            X[i,...,0] = lab_tmp.copy() # see if metrics get higher
+
             Y[i,] = lab_tmp
             #D[i,:,:,0] = depth_tmp
         #deb.prints(Y.shape)
