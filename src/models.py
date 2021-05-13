@@ -208,7 +208,7 @@ def UUnet4ConvLSTM(img_shape = (14,128,128,2),class_n=10):
     p3=dilated_layer(e2,fs*4)
     e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
 
-    x = ConvLSTM2D(256,3,return_sequences=False,
+    x = ConvLSTM2D(128,3,return_sequences=False,
             padding="same")(e3)
 
     d3 = transpose_layer(x,fs*4)
@@ -276,7 +276,8 @@ def UUnet3DConvLSTM(img_shape = (14,128,128,2),class_n=10):
 
     x = ConvLSTM2D(256,3,return_sequences=False,
             padding="same")(e3)
-
+#    x = Lambda(lambda n: n[:,-1])(e3)
+    
     d3 = transpose_layer(x,fs*4)
     p3 = slice_tensor(p3, output_shape = K.int_shape(d3))
     deb.prints(K.int_shape(p3))
@@ -409,9 +410,9 @@ class Monitor(Callback):
                 #plot_figures(self.validation[batch_index][0],val_targ,val_predict,
                 #             val_prob,self.model_dir,epoch, 
                 #             self.classes,'val')
-                #plot_figures_timedistributed(self.validation[batch_index][0],val_targ,val_predict,
-                #             val_prob,self.model_dir,epoch, 
-                #             self.classes,'val')
+                plot_figures_timedistributed(self.validation[batch_index][0],val_targ,val_predict,
+                             val_prob,self.model_dir,epoch, 
+                             self.classes,'val')
                 pass
             val_targ = np.squeeze(val_targ)
             val_predict = val_predict[val_targ<self.classes]

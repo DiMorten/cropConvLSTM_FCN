@@ -31,6 +31,7 @@ from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pdb
+from icecream import ic
 plt.rcParams.update({'font.size': 5})
 
 import deb
@@ -556,7 +557,7 @@ def plot_figures(img,cl,pred,prob,model_dir,epoch, nb_classes,set_name):
 #    nrows = 6
     nrows = 4
 
-    img = img[:8,:,:,0]
+    img = img[:8,:,:,-1]
     cl = cl[:8,:,:]
     pred = pred[:8,:,:]
     prob = np.amax(prob[:8,:,:],axis=-1)
@@ -577,7 +578,9 @@ def plot_figures(img,cl,pred,prob,model_dir,epoch, nb_classes,set_name):
     for ax in axes.flat:
         ax.set_axis_off()
         if cont_img < batch:
-            im = ax.imshow(imgs[cont][cont_bacth], cmap = 'gray')
+#            im = ax.imshow(imgs[cont][cont_bacth], cmap = 'gray')
+            im = ax.imshow(imgs[cont][cont_bacth], cmap=cmap,vmin=0, vmax=nb_classes)
+
         elif cont_img >= batch and cont_img < 3*batch:
             im = ax.imshow(imgs[cont][cont_bacth], cmap=cmap,vmin=0, vmax=nb_classes)
         elif cont_img >= 3*batch and cont_img < 4*batch:
@@ -619,9 +622,16 @@ def plot_figures_timedistributed(img,cl,pred,prob,model_dir,epoch, nb_classes,se
     '''
     batch = 8 # columns 8
 #    nrows = 6
-    nrows = 4
+    nrows = 5
 
-    img = img[:8,-1,:,:,0]
+#    img = img[:8,-1,:,:,0]
+
+    img2 = img[:8,-1,:,:,0].copy()
+
+    img = img[:8,0,:,:,0]
+    ic(np.unique(img2, return_counts = True))
+    ic(np.unique(img, return_counts = True))
+
     cl = cl[:8,:,:]
     pred = pred[:8,:,:]
     prob = np.amax(prob[:8,:,:],axis=-1)
@@ -631,7 +641,7 @@ def plot_figures_timedistributed(img,cl,pred,prob,model_dir,epoch, nb_classes,se
     fig, axes = plt.subplots(nrows=nrows, ncols=batch, figsize=(9, 6))
     
 #    imgs = [img,cl,pred,prob,d_map,pred_d]
-    imgs = [img,cl,pred,prob]
+    imgs = [img,img,cl,pred,prob]
      
     cont = 0
     cont_img = 0
@@ -642,12 +652,14 @@ def plot_figures_timedistributed(img,cl,pred,prob,model_dir,epoch, nb_classes,se
     for ax in axes.flat:
         ax.set_axis_off()
         if cont_img < batch:
-            im = ax.imshow(imgs[cont][cont_bacth], cmap = 'gray')
-        elif cont_img >= batch and cont_img < 3*batch:
+#            im = ax.imshow(imgs[cont][cont_bacth], cmap = 'gray')
             im = ax.imshow(imgs[cont][cont_bacth], cmap=cmap,vmin=0, vmax=nb_classes)
-        elif cont_img >= 3*batch and cont_img < 4*batch:
+
+        elif cont_img >= batch and cont_img < 4*batch:
+            im = ax.imshow(imgs[cont][cont_bacth], cmap=cmap,vmin=0, vmax=nb_classes)
+        elif cont_img >= 4*batch and cont_img < 5*batch:
             im = ax.imshow(imgs[cont][cont_bacth], cmap='OrRd', interpolation='nearest')
-        elif cont_img >= 4*batch:
+        elif cont_img >= 5*batch:
             im = ax.imshow(imgs[cont][cont_bacth], cmap='winter', interpolation='nearest')
 
         cont_img+=1
@@ -714,6 +726,8 @@ def plot_figures_test(img,cl,pred,prob,model_dir,nb_classes,set_name):
         ax.set_axis_off()
         if cont_img == 0:
             im = ax.imshow(imgs[cont_img], cmap = 'gray')
+#            im = ax.imshow(imgs[cont_img], cmap=cmap,vmin=0, vmax=nb_classes)
+
         elif cont_img == 1 or cont_img == 2:
             im = ax.imshow(imgs[cont_img], cmap=cmap,vmin=0, vmax=nb_classes)
         elif cont_img == 3:
@@ -789,6 +803,7 @@ def plot_figures_test_timedistributed(img,cl,pred,prob,model_dir,nb_classes,set_
         ax.set_axis_off()
         if cont_img == 0:
             im = ax.imshow(imgs[cont_img], cmap = 'gray')
+#            im = ax.imshow(imgs[cont_img], cmap=cmap,vmin=0, vmax=nb_classes)
         elif cont_img == 1 or cont_img == 2:
             im = ax.imshow(imgs[cont_img], cmap=cmap,vmin=0, vmax=nb_classes)
         elif cont_img == 3:

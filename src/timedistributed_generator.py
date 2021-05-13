@@ -13,6 +13,7 @@ from tensorflow.python.keras.utils.data_utils import Sequence
 import deb
 import pdb
 import cv2
+from icecream import ic
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 
 class TimeDistributedDataGenerator(keras.utils.Sequence):
@@ -99,6 +100,9 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
         # Initialization
 
         X = np.empty((self.batch_size, *self.dim))
+        ##ic(X.shape)
+#        X = np.empty((self.batch_size, self.patch_size,self.patch_size), dtype=np.uint8)
+
         Y = np.empty((self.batch_size, self.patch_size,self.patch_size), dtype=np.uint8)
         #D = np.empty((self.batch_size, self.patch_size,self.patch_size,1), dtype=np.float32)
 
@@ -125,6 +129,8 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
 
             idx_tmp = np.array(idx_tmp)
             # Random flips and rotations 
+            ##ic(self.use_augm)
+            self.use_augm = False
             if self.use_augm:
                 transf = np.random.randint(0,6,1)
                 if transf == 0:
@@ -160,7 +166,11 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
                  
                 
             X[i,] = patch_tmp
+            X[i, ...,0] = lab_tmp.copy()
+            X[i, ...,-1] = lab_tmp.copy()
+
             Y[i,] = lab_tmp
             #D[i,:,:,0] = depth_tmp
         #deb.prints(Y.shape)
         return X, np.expand_dims(Y,axis=-1)#, D
+##        return X, Y#, D

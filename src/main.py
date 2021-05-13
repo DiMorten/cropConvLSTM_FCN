@@ -50,6 +50,7 @@ import cv2
 colorama.init()
 from utils import cmap, plot_figures_test
 from model_input_mode import MIM, MIMTimeSequence, MIMStack
+from icecream import ic
 
 def getTimeDelta(im_names):
     time_delta=[]
@@ -98,7 +99,24 @@ def plot_input(im,mask,time_delta):
     plt.show()
         
 
+def time_distributed_plot_input(im,mask,time_delta):
+    time_delta = np.concatenate((time_delta,time_delta),axis=0)
+    print(time_delta)
+    averageTimeseries = []
+    print("Input shape",im.shape,mask.shape)
+    for band_id in range(im.shape[-1]):
+        im_flat = im[...,band_id].flatten()
+        mask_flat = mask.flatten()
+        print("t shape",im_flat.shape,mask_flat.shape)
 
+        im_flat = im_flat[mask_flat==1]
+        averageTimeseries.append(np.average(im_flat))
+    fig, ax = plt.subplots()
+    ax.plot(time_delta,averageTimeseries,marker=".")
+    ax.set(xlabel='time ID', ylabel='band',title='Image average over time')
+    plt.grid()
+    plt.show()
+        
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_dir', default='results',
@@ -125,8 +143,6 @@ parser.add_argument('--mode', default="Eval",
 
 if __name__ == '__main__':
 
-    mim = MIMTimeSequence()
-#    mim = MIMStack()
 
     val_mode = False
     # define dataset
@@ -158,7 +174,12 @@ if __name__ == '__main__':
     assert os.path.isfile(
         json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
-           
+
+    if params.timeStack == True:
+        mim = MIMTimeSequence()
+    else:
+        mim = MIMStack()
+
     # load train image
     #image = np.load(args.img_data)
     image = mim.im_load(args.img_data,im_names)
@@ -177,8 +198,13 @@ if __name__ == '__main__':
     # load label image for train
     labels = load_image(args.gt_tr)
     mask = load_image(args.train_test_mask)
-#    plot_input(image,mask,time_delta)
 
+    ic(image.shape)
+    if type(mim) is MIMStack:
+        plot_input(image,mask,time_delta)
+    else:
+        #time_distributed_plot_input(image,mask,time_delta)
+        pass
     if val_mode==True:
         # load label image for dev
         labels_dev = labels.copy()
@@ -215,27 +241,27 @@ if __name__ == '__main__':
             
             # get training coords from normalize data
             coords = np.where(labels!=0)
-            
-            if args.mode == "Train":
-                img_tmp = mim.getChannelwiseFlattenedSequence(image) # (h,w,c*t)
-                img_tmp = img_tmp[coords] 
-                scaler = pp.StandardScaler().fit(img_tmp)
-                img_tmp = []
-                scaler_filename = os.path.join(args.model_dir,"scaler.save")
-                print("Train. Saving scaler",scaler_filename)                
-                joblib.dump(scaler, scaler_filename)
-            else:
-                scaler_filename = os.path.join(args.model_dir,"scaler.save")
-                print("Test. Loading scaler",scaler_filename)
-                scaler = joblib.load(scaler_filename)
-            
-            print("Scaler parameters",scaler.mean_, scaler.var_)
+            if params.scale == True:
+                if args.mode == "Train":
+                    img_tmp = mim.getChannelwiseFlattenedSequence(image) # (h,w,c*t)
+                    img_tmp = img_tmp[coords] 
+                    scaler = pp.StandardScaler().fit(img_tmp)
+                    img_tmp = []
+                    scaler_filename = os.path.join(args.model_dir,"scaler.save")
+                    print("Train. Saving scaler",scaler_filename)                
+                    joblib.dump(scaler, scaler_filename)
+                else:
+                    scaler_filename = os.path.join(args.model_dir,"scaler.save")
+                    print("Test. Loading scaler",scaler_filename)
+                    scaler = joblib.load(scaler_filename)
+                
+                print("Scaler parameters",scaler.mean_, scaler.var_)
 
-            image = mim.reshapeForScaler(image)
-#            image = image.reshape(row*col,bands)
-            image = scaler.transform(image)
-            image = mim.reshapeFromScaler(image)
-#            image = image.reshape(row,col,bands)
+                image = mim.reshapeForScaler(image)
+    #            image = image.reshape(row*col,bands)
+                image = scaler.transform(image)
+                image = mim.reshapeFromScaler(image)
+    #            image = image.reshape(row,col,bands)
             
             if args.mode == "Test":
 #                params.ovrl_test = 0.5
@@ -418,8 +444,8 @@ if __name__ == '__main__':
             elif params.model == 'convlstm':
                 #model = UUnetConvLSTM(img_shape=dim, nb_classes=params.classes) 
                 #model = BUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
-                #model = UUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
-                model = UUnet3DConvLSTM(img_shape=dim, class_n=params.classes) 
+                model = UUnet4ConvLSTM(img_shape=dim, class_n=params.classes) 
+#                model = UUnet3DConvLSTM(img_shape=dim, class_n=params.classes) 
 
                 
             print(model.summary())

@@ -160,6 +160,7 @@ class DataGenerator(keras.utils.Sequence):
                  
                 
             X[i,] = patch_tmp
+            X[i,...,-1] = lab_tmp.copy() # see if metrics get higher
             Y[i,] = lab_tmp
             #D[i,:,:,0] = depth_tmp
         #deb.prints(Y.shape)
