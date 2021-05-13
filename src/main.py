@@ -21,7 +21,7 @@ import glob
 import numpy as np
 from generator import DataGenerator
 from timedistributed_generator import TimeDistributedDataGenerator
-from models import cnn, Monitor, f1_mean, UUnetConvLSTM, BUnet4ConvLSTM, UUnet4ConvLSTM, UUnet3DConvLSTM, simplefcn_t, simplefcn
+from models import cnn, Monitor, f1_mean, UUnetConvLSTM, BUnet4ConvLSTM, UUnet4ConvLSTM, UUnet3DConvLSTM, simplefcn_t, simplefcn, cnn_t
 from deeplab_versions import DeepLabVersions, DeepLabConvLSTM
 from keras.utils import plot_model
 from keras.optimizers import SGD, Adadelta, Adagrad, Adam
@@ -454,6 +454,8 @@ if __name__ == '__main__':
 #                model = UUnet3DConvLSTM(img_shape=dim, class_n=params.classes) 
             elif params.model == 'simplefcn':
                 model = simplefcn(img_shape=dim, class_n=params.classes) 
+            elif params.model == 'cnn_t':
+                model = cnn_t(img_shape=dim, nb_classes=params.classes)  
 
                 
             print(model.summary())

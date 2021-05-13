@@ -70,8 +70,50 @@ def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
     conv8 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
     classfier = Conv2D(nb_classes, 1, activation = 'softmax', name='cl_output')(conv8)
     
+    model = Model(inputs = inputs, outputs = [classfier])
+    print(model.summary())
+    return model
 
 
+def cnn_t(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
+    img_shape = (14,32,32,2)
+    inputs = Input(shape=img_shape)
+    fs = 16
+    conv1 = TimeDistributed(Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(inputs)
+    conv1 = TimeDistributed(Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv1)
+    pool1 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(conv1)
+    conv2 = TimeDistributed(Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(pool1)
+    conv2 = TimeDistributed(Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv2)
+    pool2 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(conv2)
+    conv3 = TimeDistributed(Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(pool2)
+    conv3 = TimeDistributed(Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv3)
+#    drop3 = Dropout(0.5)(conv3)
+    pool3 = TimeDistributed(MaxPooling2D(pool_size=(2, 2)))(conv3)
+
+    conv5 = TimeDistributed(Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(pool3)
+    conv5 = TimeDistributed(Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(conv5)
+#    drop5 = Dropout(0.5)(conv5)
+    conv5 = Lambda(lambda n: n[:,-1])(conv5)
+    # Classification branch
+    up6 = Conv2D(fs*4, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv5))
+    conv3 = Lambda(lambda n: n[:,-1])(conv3)
+    merge6 = concatenate([conv3,up6], axis = -1)
+    conv6 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
+    conv6 = Conv2D(fs*4, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
+
+    up7 = Conv2D(fs*2, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+    conv2 = Lambda(lambda n: n[:,-1])(conv2)
+    merge7 = concatenate([conv2,up7], axis = -1)
+    conv7 = Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
+    conv7 = Conv2D(fs*2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
+
+    up8 = Conv2D(fs, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+    conv1 = Lambda(lambda n: n[:,-1])(conv1)
+    merge8 = concatenate([conv1,up8], axis = -1)
+    conv8 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
+    conv8 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
+    classfier = Conv2D(nb_classes, 1, activation = 'softmax', name='cl_output')(conv8)
+    
     model = Model(inputs = inputs, outputs = [classfier])
     print(model.summary())
     return model
