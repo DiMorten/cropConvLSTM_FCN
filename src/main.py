@@ -295,6 +295,8 @@ if __name__ == '__main__':
             val_n = round(coords_tr.shape[0]*0.01)
             val_n = round(coords_tr.shape[0]*0.0005)
             val_n = round(coords_tr.shape[0]*0.0015)
+            #val_n = round(coords_tr.shape[0]*0.0002)
+
 
             deb.prints(val_n)
             deb.prints(len(coords_tr_idx))

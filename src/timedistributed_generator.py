@@ -181,8 +181,9 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
                         X[i, idx,...,0] = lab_tmp.copy()
                         X[i, idx,...,-1] = lab_tmp.copy()
                 else:
-                        X[i, -1,...,0] = lab_tmp.copy()
-                        X[i, -1,...,-1] = lab_tmp.copy()
+                    #X[i, -1,...,0] = lab_tmp.copy()
+                    #X[i, -1,...,-1] = lab_tmp.copy()
+                    pass
                     
 
 

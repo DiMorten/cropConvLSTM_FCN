@@ -35,7 +35,7 @@ import deb
 
 
 def cnn(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
-    img_shape = (32,32,2)
+    #img_shape = (32,32,2)
     inputs = Input(shape=img_shape)
     fs = 16
     conv1 = Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
@@ -120,7 +120,7 @@ def cnn_t(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
 
 
 def cnn_rnn_t(pretrained_weights = None, img_shape = (128,128,25),nb_classes=10):
-    img_shape = (14,32,32,2)
+    #img_shape = (14,32,32,2)
     inputs = Input(shape=img_shape)
     fs = 16
     conv1 = TimeDistributed(Conv2D(fs, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal'))(inputs)

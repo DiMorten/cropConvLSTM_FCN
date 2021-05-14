@@ -58,7 +58,8 @@ class DataGenerator(keras.utils.Sequence):
         self.use_augm = use_augm
         self.samp_per_epoch = samp_per_epoch
         self.on_epoch_end()
-        self.single_image_test = True
+        self.single_image_test = False
+        self.label_as_input = False
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -169,8 +170,9 @@ class DataGenerator(keras.utils.Sequence):
 
 #            X[i,] = patch_tmp
 #            ic(X[i,].shape)
-            X[i,...,-1] = lab_tmp.copy() # see if metrics get higher
-            X[i,...,0] = lab_tmp.copy() # see if metrics get higher
+            if self.label_as_input == True:
+                X[i,...,-1] = lab_tmp.copy() # see if metrics get higher
+                X[i,...,0] = lab_tmp.copy() # see if metrics get higher
 
             Y[i,] = lab_tmp
             #D[i,:,:,0] = depth_tmp
