@@ -59,6 +59,7 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
         self.samp_per_epoch = samp_per_epoch
         self.on_epoch_end()
         self.single_image_test = False
+        self.label_as_input = False
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -175,10 +176,14 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
                 X[i, ...,-1] = lab_tmp.copy()
             else:
                 X[i,] = patch_tmp # (t_len, h, w, channels)
-                for idx in range(X[i].shape[0]): # time
-                    X[i, idx,...,0] = lab_tmp.copy()
-                    X[i, idx,...,-1] = lab_tmp.copy()
-
+                if self.label_as_input == True:
+                    for idx in range(X[i].shape[0]): # time
+                        X[i, idx,...,0] = lab_tmp.copy()
+                        X[i, idx,...,-1] = lab_tmp.copy()
+                else:
+                        X[i, -1,...,0] = lab_tmp.copy()
+                        X[i, -1,...,-1] = lab_tmp.copy()
+                    
 
 
  #           ic(X[i,].shape)
