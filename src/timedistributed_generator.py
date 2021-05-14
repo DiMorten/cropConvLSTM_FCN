@@ -135,7 +135,7 @@ class TimeDistributedDataGenerator(keras.utils.Sequence):
             idx_tmp = np.array(idx_tmp)
             # Random flips and rotations 
             ##ic(self.use_augm)
-            self.use_augm = False
+#            self.use_augm = False
             if self.use_augm:
                 transf = np.random.randint(0,6,1)
                 if transf == 0:
