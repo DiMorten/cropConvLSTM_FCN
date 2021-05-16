@@ -16,7 +16,7 @@ import random
 from utils import load_image, metrics, add_padding, seq_add_padding
 from utils import set_logger, save_dict_to_json 
 from utils import Params, check_folder, Results
-from utils import extract_patches_coord
+from utils import extract_patches_coord, cmap
 import glob
 import numpy as np
 from generator import DataGenerator
@@ -30,7 +30,7 @@ from keras.models import Model, load_model
 import keras
 from sklearn.cluster import KMeans
 import gc
-from loss import categorical_focal_loss, masked_mse, accuracy_mask, f_score, categorical_focal_ignoring_last_label
+from loss import categorical_focal_loss, weighted_categorical_focal_loss, masked_mse, accuracy_mask, f_score, categorical_focal_ignoring_last_label
 from collections import Counter, OrderedDict
 from sklearn import preprocessing as pp
 import joblib
@@ -467,7 +467,10 @@ if __name__ == '__main__':
             ##plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)
             
             cl_ind = [x for x in range(params.classes)]
-            losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind)}
+            weights = # estimate weights from sklearn
+
+#            losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind)}
+            losses = {"cl_output": weighted_categorical_focal_loss(weights, alpha=[ratio.tolist()],class_indexes=cl_ind)}
             
             #losses = {"cl_output": categorical_focal_ignoring_last_label(alpha=0.25,gamma=2)}
             
@@ -610,7 +613,17 @@ if __name__ == '__main__':
                 #cl_int[cl_int == last_class] = 0
                 deb.prints(np.unique(cl_int,return_counts=True))                
                 print("Masking classification result")
-                
+                cv2.imwrite("result.png",cl_int*25)
+                plt.imshow(cl_int, cmap=cmap,vmin=0, vmax=len(classes_prediction))  
+                plt.savefig('result_color.png', dpi = 300, format='png', bbox_inches = 'tight')
+                plt.show()
+                plt.clf()
+
+                plt.imshow(labels_tr, cmap=cmap,vmin=0, vmax=len(classes_prediction))  
+                plt.savefig('labels_all_color.png', dpi = 300, format='png', bbox_inches = 'tight')
+                plt.show()
+                plt.clf()
+
                 cl_int[mask==0]=0
                 if test_on_train_set==False:
                     cl_int[mask==1]=0
@@ -635,7 +648,6 @@ if __name__ == '__main__':
                 print("cl_int_mask stats:")
                 print(cl_int.min(), np.average(cl_int), cl_int.max())
                 
-                cv2.imwrite("result.png",cl_int*25)
 
                 cv2.imwrite("result_test.png",cl_int*25)
 

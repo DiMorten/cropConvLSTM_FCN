@@ -52,9 +52,24 @@ colormap_list = np.array([[40/255.0, 255/255.0, 40/255.0],
           [177/255.0, 89/255.0, 40/255.0],
           [255/255.0, 255/255.0, 0/255.0],
           [0/255.0, 0/255.0, 0/255.0]])
-
+custom_colormap = np.array([[255,146,36],
+                [255,255,0],
+                [164,164,164],
+                [255,62,62],
+                [0,0,0],
+                [172,89,255],
+                [0,166,83],
+                [40,255,40],
+                [187,122,83],
+                [217,64,238],
+                [0,113,225],
+                [128,0,0],
+                [114,114,56],
+                [53,255,255]])
+#custom_colormap = custom_colormap / 255.0                
 
 cmap = ListedColormap(colormap_list)
+#cmap = ListedColormap(custom_colormap)
 
 class Params():
     """Class that loads hyperparameters from a json file.

@@ -95,6 +95,61 @@ def categorical_focal_ignoring_last_label(alpha=0.25,gamma=2):
         return loss
     
     return loss
+
+
+def weighted_categorical_focal_loss(weights, gamma=2.0, alpha=0.25, class_indexes=None):
+    r"""Implementation of Focal Loss from the paper in multiclass classification
+    Formula:
+        loss = - gt * alpha * ((1 - pr)^gamma) * log(pr)
+    Args:
+        alpha: the same as weighting factor in balanced cross entropy, default 0.25
+        gamma: focusing parameter for modulating factor (1-p), default 2.0
+        class_indexes: Optional integer or list of integers, classes to consider, if ``None`` all classes are used.
+    """
+    def f_cat(y_true, y_pred):
+        y_pred = K.reshape(y_pred, (-1, K.int_shape(y_pred)[-1]))
+        
+        y_true = tf.cast(y_true,tf.int32)
+        y_true = K.one_hot(K.flatten(y_true), K.int_shape(y_pred)[-1]+1)
+        unpacked = tf.unstack(y_true, axis=-1)
+        y_true = tf.stack(unpacked[:-1], axis=-1)
+    
+        # clip to prevent NaN's and Inf's
+        y_pred = K.clip(y_pred, K.epsilon(), 1.0 - K.epsilon())
+    
+        # Calculate focal loss
+        loss = K.mean(- y_true * (alpha * K.pow((1 - y_pred), gamma) * K.log(y_pred)) * weights)
+        return loss
+    return f_cat
+
+def weighted_categorical_crossentropy(weights):
+    """
+    A weighted version of keras.objectives.categorical_crossentropy
+    
+    Variables:
+        weights: numpy array of shape (C,) where C is the number of classes
+    
+    Usage:
+        weights = np.array([0.5,2,10]) # Class one at 0.5, class 2 twice the normal weights, class 3 10x.
+        loss = weighted_categorical_crossentropy(weights)
+        model.compile(loss=loss,optimizer='adam')
+    """
+    
+    weights = K.variable(weights)
+        
+    def loss(y_true, y_pred):
+        # scale predictions so that the class probas of each sample sum to 1
+        y_pred /= K.sum(y_pred, axis=-1, keepdims=True)
+        # clip to prevent NaN's and Inf's
+        y_pred = K.clip(y_pred, K.epsilon(), 1 - K.epsilon())
+        # calc
+        loss = y_true * K.log(y_pred) * weights
+        loss = -K.sum(loss, -1)
+        return loss
+    
+    return loss
+
+
 def masked_mse():
     def f_reg(y_true, y_pred):
         y_true = K.flatten(y_true)
