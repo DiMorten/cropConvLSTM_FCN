@@ -160,13 +160,12 @@ if __name__ == '__main__':
 #    args.exp_id = 'seventh_moreval'
 #    args.exp_id = 'deeplab_rep1' # stack
 #    args.exp_id = 'deeplab_colab' # stack
-    args.exp_id = 'weights' # stack
+#    args.exp_id = 'weights' # stack
+    args.exp_id = 'index_train_test' # stack
 
 #    args.exp_id = 'deeplab_convlstm_rep1' 
 #    args.exp_id = 'deeplab_convlstm_mim' # timsequence
 #    args.exp_id = 'bunet4convlstm_timedistributed' # stack
-
-    args.dataset = 'cv'
 
     
     args.img_data=Path(args.img_data)
@@ -176,6 +175,9 @@ if __name__ == '__main__':
         json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
+    args.dataset = params.dataset
+
+    
     if params.timeDistributed == True:
         mim = MIMTimeSequence()
     else:
@@ -216,18 +218,18 @@ if __name__ == '__main__':
 
     if args.mode == "Train":
         labels[mask!=1]=0
-        for t_step in range(t_len):
-            for chan in range(bands):
-                image[t_step, ..., chan][mask!=1] = -2
+#        for t_step in range(t_len):
+#            for chan in range(bands):
+#                image[t_step, ..., chan][mask!=1] = -2
 
     else:
 #       
         test_on_train_set = False
         if test_on_train_set==False:
             labels[mask!=2]=0
-            for t_step in range(t_len):
-                for chan in range(bands):
-                    image[t_step, ..., chan][mask!=2] = -2
+#            for t_step in range(t_len):
+#                for chan in range(bands):
+#                    image[t_step, ..., chan][mask!=2] = -2
 
         else:
             labels[mask!=1]=0
@@ -294,9 +296,9 @@ if __name__ == '__main__':
 #            pdb.set_trace()
             if params.extractCoords == True: 
                 coords_tr = extract_patches_coord(labels_tr, params.patch_size, stride, train = True)
-                np.save("coords_tr_"+str(stride)+".npy",coords_tr)
+                np.save("coords_tr_"+str(stride)+"_"+params.dataset+"_"+args.mode+".npy",coords_tr)
             else:
-                coords_tr = np.load("coords_tr_"+str(stride)+".npy")
+                coords_tr = np.load("coords_tr_"+str(stride)+"_"+params.dataset+"_"+args.mode+".npy")
             
 ##            coords_val = extract_patches_coord(labels_val, params.patch_size, stride, train = False)
             deb.prints(coords_tr.shape)

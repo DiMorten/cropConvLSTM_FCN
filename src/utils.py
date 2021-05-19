@@ -495,6 +495,7 @@ def extract_patches_coord(img_gt, psize, stride, train = False):
                  
         count_cl = Counter(classes)              
         samples_per_class = int(round(np.max(list(count_cl.values()))))
+        ic(samples_per_class)
         num_total_samples = len(np.unique(classes))*samples_per_class
         coordsx_tr = np.zeros((num_total_samples,2), dtype='int')
         labels_tr = np.zeros(num_total_samples, dtype='int')
