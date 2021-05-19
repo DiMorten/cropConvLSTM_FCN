@@ -30,7 +30,7 @@ from keras.models import Model, load_model
 import keras
 from sklearn.cluster import KMeans
 import gc
-from loss import categorical_focal_loss, weighted_categorical_focal_loss, masked_mse, accuracy_mask, f_score, categorical_focal_ignoring_last_label
+from loss import categorical_focal_loss, weighted_categorical_focal_loss, masked_mse, accuracy_mask, f_score, categorical_focal_ignoring_last_label, weighted_categorical_crossentropy
 from collections import Counter, OrderedDict
 from sklearn import preprocessing as pp
 import joblib
@@ -159,7 +159,8 @@ if __name__ == '__main__':
 #    args.exp_id = 'sixth_moreval'
 #    args.exp_id = 'seventh_moreval'
 #    args.exp_id = 'deeplab_rep1' # stack
-    args.exp_id = 'deeplab_colab' # stack
+#    args.exp_id = 'deeplab_colab' # stack
+    args.exp_id = 'weights' # stack
 
 #    args.exp_id = 'deeplab_convlstm_rep1' 
 #    args.exp_id = 'deeplab_convlstm_mim' # timsequence
@@ -215,11 +216,19 @@ if __name__ == '__main__':
 
     if args.mode == "Train":
         labels[mask!=1]=0
+        for t_step in range(t_len):
+            for chan in range(bands):
+                image[t_step, ..., chan][mask!=1] = -2
+
     else:
 #       
         test_on_train_set = False
         if test_on_train_set==False:
             labels[mask!=2]=0
+            for t_step in range(t_len):
+                for chan in range(bands):
+                    image[t_step, ..., chan][mask!=2] = -2
+
         else:
             labels[mask!=1]=0
 
@@ -377,7 +386,20 @@ if __name__ == '__main__':
                   
                 cv2.imwrite('labels_sample_full.png',labels_tr*20)   
   
-        if args.mode == "Train":       
+        if args.mode == "Train": 
+            from sklearn.utils.class_weight import compute_class_weight
+            ic(np.unique(labels_tr, return_counts=True))
+            labels_tr_weights = labels_tr.flatten()
+            unique = np.unique(labels_tr_weights)
+            labels_tr_weights = labels_tr_weights[labels_tr_weights!=unique[-1]]
+            weights = compute_class_weight('balanced',np.unique(labels_tr_weights), labels_tr_weights)
+            ic(labels_tr_weights.shape)
+            #weights = np.ones(9)
+            ic(weights)
+
+            #pdb.set_trace()
+           # label_tr_weights[]
+            #
             # Set the logger
             count_cl = dict(sorted(Counter(labels_tr[labels_tr!=params.classes]).items()))
             prop = np.array((list(count_cl.values())))/np.sum(np.array((list(count_cl.values()))))
@@ -467,10 +489,11 @@ if __name__ == '__main__':
             ##plot_model(model, to_file=os.path.join(model_k,'model.png'), show_shapes=True)
             
             cl_ind = [x for x in range(params.classes)]
-            weights = # estimate weights from sklearn
+            #weights = # estimate weights from sklearn
 
-#            losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind)}
-            losses = {"cl_output": weighted_categorical_focal_loss(weights, alpha=[ratio.tolist()],class_indexes=cl_ind)}
+            losses = {"cl_output": categorical_focal_loss(depth=np.int(params.classes+1), alpha=[ratio.tolist()],class_indexes=cl_ind)}
+#            losses = {"cl_output": weighted_categorical_focal_loss(weights, alpha=[ratio.tolist()],class_indexes=cl_ind)}
+#            losses = {"cl_output": weighted_categorical_crossentropy(weights)}
             
             #losses = {"cl_output": categorical_focal_ignoring_last_label(alpha=0.25,gamma=2)}
             
